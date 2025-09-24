@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using BepInEx.Bootstrap;
 using CodeTalker.Packets;
@@ -12,174 +13,294 @@ namespace CodeTalker.Networking;
 /// <summary>
 /// The main network entry point for Code Talker
 /// </summary>
-public static class CodeTalkerNetwork
-{
-  /// <summary>
-  /// A delegate for receiving packet events from Code Talker
-  /// </summary>
-  /// <param name="header">The received packet's header</param>
-  /// <param name="packet">The received packet's body</param>
-  public delegate void PacketListener(PacketHeader header, PacketBase packet);
+public static class CodeTalkerNetwork {
+    /// <summary>
+    /// A delegate for receiving packet events from Code Talker
+    /// </summary>
+    /// <param name="header">The received packet's header</param>
+    /// <param name="packet">The received packet's body</param>
+    public delegate void PacketListener(PacketHeader header, PacketBase packet);
 
-  /// <summary>
-  /// This should only be modified for BREAKING changes in packet structure
-  /// </summary>
-  private const ushort NETWORK_PACKET_VERSION = 2;
+    /// <summary>
+    /// A delegate for receiving binary packet events from Code Talker
+    /// </summary>
+    /// <param name="header">The received packet's header</param>
+    /// <param name="packet">The received packet's body</param>
+    public delegate void BinaryPacketListener(PacketHeader header, BinaryPacketBase packet);
 
-  internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
-  private static readonly Dictionary<string, PacketListener> packetListeners = [];
+    /// <summary>
+    /// This should only be modified for BREAKING changes in packet structure
+    /// </summary>
+    private const ushort NETWORK_PACKET_VERSION = 2;
 
-  internal static string GetTypeNameString(Type type) =>
-    $"{type.Assembly.GetName().Name},{type.DeclaringType?.Name ?? "NONE"}:{type.Namespace ?? "NONE"}.{type.Name}";
+    /// <summary>
+    /// The *fixed* size of the binary packet signature in bytes. CHANGING THIS IS A BREAKING CHANGE.
+    /// </summary>
+    internal const ushort BINARY_PACKET_SIG_SIZE = 12;
 
-  /// <summary>
-  /// Registers a listener by packet type. Code Talker will call
-  /// your listener when the specific System.Type is created from
-  /// a serial network message and pass it to your listener
-  /// </summary>
-  /// <typeparam name="T">The exact runtime type of your packet</typeparam>
-  /// <param name="listener">A PacketListener delegate to notify</param>
-  /// <returns>
-  /// Will return <em>TRUE</em> if the listener is added to the list and
-  /// <em>FALSE</em> is a listener already exists for this type
-  /// </returns>
-  public static bool RegisterListener<T>(PacketListener listener) where T : PacketBase
-  {
-    var inType = typeof(T);
-    string typeName = GetTypeNameString(inType);
+    internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
+    internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
+    private static readonly Dictionary<string, PacketListener> packetListeners = [];
 
-    if (packetListeners.ContainsKey(typeName))
-    {
-      return false;
+    struct BinaryListenerEntry { 
+        public BinaryPacketListener Listener;
+        public Type PacketType;
+
+        public BinaryListenerEntry(BinaryPacketListener listener, Type packetType) {
+            Listener = listener;
+            PacketType = packetType;
+        }
+    }
+    private static readonly Dictionary<string, BinaryListenerEntry> binaryListeners = [];
+
+    internal static string GetTypeNameString(Type type) =>
+      $"{type.Assembly.GetName().Name},{type.DeclaringType?.Name ?? "NONE"}:{type.Namespace ?? "NONE"}.{type.Name}";
+
+    /// <summary>
+    /// Registers a listenerEntry by packet type. Code Talker will call
+    /// your listenerEntry when the specific System.Type is created from
+    /// a serial network message and pass it to your listenerEntry
+    /// </summary>
+    /// <typeparam name="T">The exact runtime type of your packet</typeparam>
+    /// <param name="listener">A PacketListener delegate to notify</param>
+    /// <returns>
+    /// Will return <em>TRUE</em> if the listenerEntry is added to the list and
+    /// <em>FALSE</em> is a listenerEntry already exists for this type
+    /// </returns>
+    public static bool RegisterListener<T>(PacketListener listener) where T : PacketBase {
+        var inType = typeof(T);
+        string typeName = GetTypeNameString(inType);
+
+        if (packetListeners.ContainsKey(typeName)) {
+            return false;
+        }
+
+        packetListeners.Add(typeName, listener);
+
+        return true;
     }
 
-    packetListeners.Add(typeName, listener);
 
-    return true;
-  }
+    /// <summary>
+    /// Registers a listenerEntry by binary packet signature. Code Talker will call
+    /// your listenerEntry when a binary packet with the matching signature
+    /// is recieved and will pass the raw byte array to your listenerEntry
+    /// </summary>
+    /// <typeparam name="T">The exact runtime type of your packet</typeparam>
+    /// <param name="listener"></param>
+    /// <returns>
+    /// Will return <em>TRUE</em> if the listenerEntry is added to the list and
+    /// <em>FALSE</em> is a listenerEntry already exists for this type
+    /// </returns>
+    public static bool RegisterBinaryListener<T>(BinaryPacketListener listener) where T : BinaryPacketBase, new() {
 
-  /// <summary>
-  /// Wraps and sends a message to all clients on the Code Talker network
-  /// </summary>
-  /// <param name="packet">The packet to send, must be derived from PacketBase</param>
-  public static void SendNetworkPacket(PacketBase packet)
-  {
-    string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
-    PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), rawPacket);
+        var type = typeof(T);
+        var prop = type.GetProperty("PacketSignature", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                     ?? (MemberInfo)type.GetField("PacketSignature", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
-    var rawWrapper = $"{CODE_TALKER_SIGNATURE}{JsonConvert.SerializeObject(wrapper, PacketSerializer.JSONOptions)}";
-    var bytes = Encoding.UTF8.GetBytes(rawWrapper);
-    SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), bytes, bytes.Length);
-  }
+        string signature;
 
-  internal static void OnNetworkMessage(LobbyChatMsg_t message)
-  {
-    bool dbg = CodeTalkerPlugin.EnablePacketDebugging.Value;
+        if (prop is PropertyInfo pi)
+            signature = (string)pi.GetValue(new T());
+        else {
+            CodeTalkerPlugin.Log.LogError($"Failed to register binary listenerEntry for type {type.FullName}, PacketSignature property not found!");
+            return false;
+        }
 
-    if (dbg)
-      CodeTalkerPlugin.Log.LogDebug("Called back!");
+        if (signature.Length > BINARY_PACKET_SIG_SIZE)
+            signature = signature[..BINARY_PACKET_SIG_SIZE];
 
-    int bufferSize = 4096; //4kb buffer
-    byte[] rawData = new byte[bufferSize];
+        if (binaryListeners.ContainsKey(signature))
+            return false;
 
-    var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
-    string data = Encoding.UTF8.GetString(rawData[..ret]);
-
-    if (!data.StartsWith(CODE_TALKER_SIGNATURE))
-      return;
-
-    data = data.Replace(CODE_TALKER_SIGNATURE, string.Empty);
-    if (dbg)
-    {
-      CodeTalkerPlugin.Log.LogDebug($"Heard {ret} from GetLobbyChat. Sender {senderID}, type {messageType}");
-      CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
+        binaryListeners.Add(signature, new BinaryListenerEntry(listener, type));
+        return true;
     }
 
-    PacketWrapper wrapper;
-    PacketBase packet;
-    Type inType;
+    /// <summary>
+    /// Wraps and sends a message to all clients on the Code Talker network
+    /// </summary>
+    /// <param name="packet">The packet to send, must be derived from PacketBase</param>
+    public static void SendNetworkPacket(PacketBase packet) {
+        string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
+        PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), rawPacket);
 
-    //We do it this way to make sure we're not blamed for errors
-    //that other networked mods may cause
-
-    try
-    {
-      if (JsonConvert.DeserializeObject<PacketWrapper>(data, PacketSerializer.JSONOptions) is PacketWrapper inWrapper)
-        wrapper = inWrapper;
-      else
-        throw new InvalidOperationException("Failed to deserialize a valid packet wrapper");
-    }
-    catch (Exception ex)
-    {
-      string aData;
-
-      if (data.Length < 24)
-        aData = data;
-      else
-        aData = data[..24];
-
-      CodeTalkerPlugin.Log.LogError($"""
-      Error while receiving a packet!
-      Exception: {ex.GetType().Name}
-      Abridged Packet:
-        {aData}
-      """);
-      return;
+        var rawWrapper = $"{CODE_TALKER_SIGNATURE}{JsonConvert.SerializeObject(wrapper, PacketSerializer.JSONOptions)}";
+        var bytes = Encoding.UTF8.GetBytes(rawWrapper);
+        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), bytes, bytes.Length);
     }
 
-    if (!packetListeners.TryGetValue(wrapper.PacketType, out var listener))
-    {
-      if (dbg)
-        CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {wrapper.PacketType} because this client does not have it installed, this is safe!");
+    /// <summary>
+    /// Wraps and sends a binary packet to all clients on the Code Talker network
+    /// </summary>
+    /// <param name="packet"></param>
+    public static void SendBinaryNetworkPacket(BinaryPacketBase packet) {
+        byte[] serializedPacket = packet.Serialize();
+        BinaryPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket);
 
-      return;
+        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.Data, wrapper.Data.Length);
     }
 
-    try
-    {
-      if (JsonConvert.DeserializeObject<PacketBase>(wrapper.PacketPayload, PacketSerializer.JSONOptions) is PacketBase inPacket)
-      {
-        inType = inPacket.GetType();
-        packet = inPacket;
-      }
-      else
-        return;
+    internal static void OnNetworkMessage(LobbyChatMsg_t message) {
+        bool dbg = CodeTalkerPlugin.EnablePacketDebugging.Value;
+
+        if (dbg)
+            CodeTalkerPlugin.Log.LogDebug("Called back!");
+
+        int bufferSize = 4096; //4kb buffer
+        byte[] rawData = new byte[bufferSize];
+
+        var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
+        string data = Encoding.UTF8.GetString(rawData[..ret]);
+
+        if (!data.StartsWith(CODE_TALKER_SIGNATURE) && !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE))
+            return;
+
+        if (dbg) {
+            CodeTalkerPlugin.Log.LogDebug($"Heard {ret} from GetLobbyChat. Sender {senderID}, type {messageType}");
+            CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
+        }
+
+        PacketWrapper wrapper;
+        PacketBase packet;
+        Type inType;
+
+        //We do it this way to make sure we're not blamed for errors
+        //that other networked mods may cause
+
+        if (data.StartsWith(CODE_TALKER_SIGNATURE)) {
+            data = data.Replace(CODE_TALKER_SIGNATURE, string.Empty);
+
+            try {
+                if (JsonConvert.DeserializeObject<PacketWrapper>(data, PacketSerializer.JSONOptions) is PacketWrapper inWrapper)
+                    wrapper = inWrapper;
+                else
+                    throw new InvalidOperationException("Failed to deserialize a valid packet wrapper");
+            } catch (Exception ex) {
+                string aData;
+
+                if (data.Length < 24)
+                    aData = data;
+                else
+                    aData = data[..24];
+
+                CodeTalkerPlugin.Log.LogError($"""
+Error while receiving a packet!
+Exception: {ex.GetType().Name}
+Abridged Packet:
+{aData}
+""");
+                return;
+            }
+
+
+            if (!packetListeners.TryGetValue(wrapper.PacketType, out var listener)) {
+                if (dbg)
+                    CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {wrapper.PacketType} because this client does not have it installed, this is safe!");
+
+                return;
+            }
+
+            try {
+                if (JsonConvert.DeserializeObject<PacketBase>(wrapper.PacketPayload, PacketSerializer.JSONOptions) is PacketBase inPacket) {
+                    inType = inPacket.GetType();
+                    packet = inPacket;
+                } else
+                    return;
+            } catch (Exception ex) {
+                CodeTalkerPlugin.Log.LogError($"""
+Error while unwrapping a packet!
+Exception: {ex.GetType().Name}
+Expected Type: {wrapper.PacketType}
+""");
+                return;
+            }
+
+            if (dbg)
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {wrapper.PacketType}");
+
+            try {
+                listener.Invoke(new(senderID.m_SteamID), packet);
+            } catch (Exception ex) {
+                var plugins = Chainloader.PluginInfos;
+                var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
+
+                //Happy lil ternary
+                string modName = mod != null
+                  ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
+                  : inType.Assembly.GetName().Name;
+
+                //Big beefin' raw string literal with interpolation
+                CodeTalkerPlugin.Log.LogError($"""
+The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
+Mod: {modName}
+StackTrace:
+{ex}
+""");
+            }
+        }
+
+        if (data.StartsWith(CODE_TALKER_BINARY_SIGNATURE)) {
+            rawData = rawData[..ret];
+
+            if (dbg)
+                CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
+
+            data = data.Replace(CODE_TALKER_BINARY_SIGNATURE, string.Empty);
+
+            BinaryPacketWrapper binWrapper;
+
+            try {
+                binWrapper = new BinaryPacketWrapper(rawData[CODE_TALKER_BINARY_SIGNATURE.Length..]);
+            } catch (Exception ex) {
+                CodeTalkerPlugin.Log.LogError($"Failed to create binary packet wrapper for valid packet!\nStackTrace: {ex}");
+                return;
+            }
+
+            if (!binaryListeners.TryGetValue(binWrapper.PacketSignature, out var listenerEntry)) {
+                if (dbg)
+                    CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of signature: {binWrapper.PacketSignature} because this client does not have it installed, this is safe!");
+                return;
+            }
+
+            if (dbg)
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature {binWrapper.PacketSignature}");
+
+            BinaryPacketBase bPacket;
+            try {
+                inType = listenerEntry.PacketType;
+                object instance = Activator.CreateInstance(inType);
+                if (instance is BinaryPacketBase) {
+                    bPacket = (BinaryPacketBase)instance;
+                    bPacket.Deserialize(binWrapper.Data);
+                } else {
+                    throw new InvalidOperationException("Failed to create instance of binary packet type!");
+                }
+            } catch (Exception ex) {
+                CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet!\nStackTrace: {ex}");
+                return;
+            }
+
+            try {
+                listenerEntry.Listener.Invoke(new(senderID.m_SteamID), bPacket);
+            } catch (Exception ex) {
+                var plugins = Chainloader.PluginInfos;
+                inType = listenerEntry.GetType();
+                var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
+
+                //Happy lil ternary
+                string modName = mod != null
+                  ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
+                  : inType.Assembly.GetName().Name;
+
+                //Big beefin' raw string literal with interpolation
+                CodeTalkerPlugin.Log.LogError($"""
+The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
+Mod: {modName}
+StackTrace:
+{ex}
+""");
+            }
+        }
     }
-    catch (Exception ex)
-    {
-      CodeTalkerPlugin.Log.LogError($"""
-      Error while unwrapping a packet!
-      Exception: {ex.GetType().Name}
-      Expected Type: {wrapper.PacketType}
-      """);
-      return;
-    }
-
-    if (dbg)
-      CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {wrapper.PacketType}");
-
-    try
-    {
-      listener.Invoke(new(senderID.m_SteamID), packet);
-    }
-    catch (Exception ex)
-    {
-      var plugins = Chainloader.PluginInfos;
-      var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
-
-      //Happy lil ternary
-      string modName = mod != null
-        ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
-        : inType.Assembly.GetName().Name;
-
-      //Big beefin' raw string literal with interpolation
-      CodeTalkerPlugin.Log.LogError($"""
-      The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
-        Mod: {modName}
-        StackTrace:
-      {ex}
-      """);
-    }
-  }
-
 }
