@@ -33,11 +33,6 @@ public static class CodeTalkerNetwork {
     /// </summary>
     private const ushort NETWORK_PACKET_VERSION = 2;
 
-    /// <summary>
-    /// The *fixed* size of the binary packet signature in bytes. CHANGING THIS IS A BREAKING CHANGE.
-    /// </summary>
-    internal const ushort BINARY_PACKET_SIG_SIZE = 12;
-
     internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
     internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
     private static readonly Dictionary<string, PacketListener> packetListeners = [];
