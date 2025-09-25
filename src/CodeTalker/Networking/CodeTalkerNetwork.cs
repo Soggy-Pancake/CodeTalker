@@ -102,13 +102,8 @@ public static class CodeTalkerNetwork {
 
         int headerLen = Encoding.UTF8.GetBytes(signature).Length;
 
-        if (signature.Length == 0) {
-            CodeTalkerPlugin.Log.LogError($"Failed to register binary listener for type {type.FullName}, PacketSignature can't be empty!");
-            return false;
-        }
-
-        if (signature.Length > 255) {
-            CodeTalkerPlugin.Log.LogError($"Failed to register binary listener for type {type.FullName}, PacketSignature can't be longer than 255 bytes!");
+        if (signature.Length == 0 || signature.Length > 255) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register binary Listener for type {type.FullName}, PacketSignature can't be {(signature.Length > 255 ? "longer than 255 bytes" : "empty")}!");
             return false;
         }
 
