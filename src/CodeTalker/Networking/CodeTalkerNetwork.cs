@@ -40,11 +40,6 @@ public static class CodeTalkerNetwork {
     struct BinaryListenerEntry {
         public BinaryPacketListener Listener;
         public Type PacketType;
-
-        public BinaryListenerEntry(BinaryPacketListener listener, Type packetType) {
-            Listener = listener;
-            PacketType = packetType;
-        }
     }
     private static readonly Dictionary<string, BinaryListenerEntry> binaryListeners = [];
 
@@ -117,7 +112,7 @@ public static class CodeTalkerNetwork {
             return false;
         }
 
-        binaryListeners.Add(signature, new BinaryListenerEntry(listener, type));
+        binaryListeners.Add(signature, new BinaryListenerEntry{ Listener = listener, PacketType = type});
         return true;
     }
 
