@@ -11,6 +11,7 @@ internal class BinaryPacketWrapper {
 
         PacketSignature = sig;
         string binSig = CodeTalkerNetwork.CODE_TALKER_BINARY_SIGNATURE;
+        byte[] signatureBytes = Encoding.UTF8.GetBytes(sig);
 
         int headerSize = binSig.Length + 1 + signatureBytes.Length;
 
