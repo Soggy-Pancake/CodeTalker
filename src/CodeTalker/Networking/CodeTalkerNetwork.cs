@@ -42,7 +42,7 @@ public static class CodeTalkerNetwork {
     internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
     private static readonly Dictionary<string, PacketListener> packetListeners = [];
 
-    struct BinaryListenerEntry { 
+    struct BinaryListenerEntry {
         public BinaryPacketListener Listener;
         public Type PacketType;
 
@@ -107,11 +107,20 @@ public static class CodeTalkerNetwork {
             return false;
         }
 
-        if (signature.Length > BINARY_PACKET_SIG_SIZE)
-            signature = signature[..BINARY_PACKET_SIG_SIZE];
-
         if (binaryListeners.ContainsKey(signature))
             return false;
+
+        int headerLen = Encoding.UTF8.GetBytes(signature).Length;
+
+        if (signature.Length == 0) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register binary listener for type {type.FullName}, PacketSignature can't be empty!");
+            return false;
+        }
+
+        if (signature.Length > 255) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register binary listener for type {type.FullName}, PacketSignature can't be longer than 255 bytes!");
+            return false;
+        }
 
         binaryListeners.Add(signature, new BinaryListenerEntry(listener, type));
         return true;
@@ -138,7 +147,7 @@ public static class CodeTalkerNetwork {
         byte[] serializedPacket = packet.Serialize();
         BinaryPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket);
 
-        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.Data, wrapper.Data.Length);
+        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
     }
 
     internal static void OnNetworkMessage(LobbyChatMsg_t message) {
