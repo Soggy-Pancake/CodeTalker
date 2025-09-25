@@ -12,7 +12,7 @@
       Inputs="$(MSBuildAllProjects)" Outputs="$(IntermediateOutputPath)LCMPluginInfo.cs">
 
     <PropertyGroup>
-      <LCMPluginGuid Condition="'$(LCMPluginGuid)' == ''">$(AssemblyName)</LCMPluginGuid>
+      <LCMPluginGuid Condition="'$(LCMPluginGuid)' == ''">Soggy_Pancake.$(AssemblyName)</LCMPluginGuid>
       <LCMPluginName Condition="'$(LCMPluginName)' == ''">$(Product)</LCMPluginName>
       <LCMPluginVersion Condition="'$(LCMPluginVersion)' == ''">$(Version)</LCMPluginVersion>
       <GeneratedText><![CDATA[
