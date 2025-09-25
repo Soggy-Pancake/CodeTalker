@@ -252,15 +252,16 @@ StackTrace:
         if (data.StartsWith(CODE_TALKER_BINARY_SIGNATURE)) {
             rawData = rawData[..ret];
 
-            if (dbg)
+            if (dbg) {
                 CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
+                CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
+            }
 
             data = data.Replace(CODE_TALKER_BINARY_SIGNATURE, string.Empty);
 
             BinaryPacketWrapper binWrapper;
-
             try {
-                binWrapper = new BinaryPacketWrapper(rawData[CODE_TALKER_BINARY_SIGNATURE.Length..]);
+                binWrapper = new BinaryPacketWrapper(rawData[(CODE_TALKER_BINARY_SIGNATURE.Length)..]);
             } catch (Exception ex) {
                 CodeTalkerPlugin.Log.LogError($"Failed to create binary packet wrapper for valid packet!\nStackTrace: {ex}");
                 return;
@@ -273,7 +274,7 @@ StackTrace:
             }
 
             if (dbg)
-                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature {binWrapper.PacketSignature}");
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{binWrapper.PacketSignature}\"");
 
             BinaryPacketBase bPacket;
             try {
@@ -281,7 +282,7 @@ StackTrace:
                 object instance = Activator.CreateInstance(inType);
                 if (instance is BinaryPacketBase) {
                     bPacket = (BinaryPacketBase)instance;
-                    bPacket.Deserialize(binWrapper.Data);
+                    bPacket.Deserialize(binWrapper.FullPacketBytes);
                 } else {
                     throw new InvalidOperationException("Failed to create instance of binary packet type!");
                 }
