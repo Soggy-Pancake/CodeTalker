@@ -165,11 +165,6 @@ public static class CodeTalkerNetwork {
         if (!data.StartsWith(CODE_TALKER_SIGNATURE) && !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE))
             return;
 
-        if (dbg) {
-            CodeTalkerPlugin.Log.LogDebug($"Heard {ret} from GetLobbyChat. Sender {senderID}, type {messageType}");
-            CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
-        }
-
         PacketWrapper wrapper;
         PacketBase packet;
         Type inType;
@@ -225,8 +220,11 @@ Expected Type: {wrapper.PacketType}
                 return;
             }
 
-            if (dbg)
+            if (dbg) {
+                CodeTalkerPlugin.Log.LogDebug($"Heard {ret} from GetLobbyChat. Sender {senderID}, type {messageType}");
+                CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
                 CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {wrapper.PacketType}");
+            }
 
             try {
                 listener.Invoke(new(senderID.m_SteamID), packet);
@@ -251,11 +249,6 @@ StackTrace:
 
         if (data.StartsWith(CODE_TALKER_BINARY_SIGNATURE)) {
             rawData = rawData[..ret];
-
-            if (dbg) {
-                CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
-                CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
-            }
 
             data = data.Replace(CODE_TALKER_BINARY_SIGNATURE, string.Empty);
 
@@ -289,6 +282,13 @@ StackTrace:
             } catch (Exception ex) {
                 CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet!\nStackTrace: {ex}");
                 return;
+            }
+
+            if (dbg) {
+                CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
+                CodeTalkerPlugin.Log.LogDebug($"Heard {ret} from GetLobbyChat. Sender {senderID}, type {messageType}");
+                CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
+                CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
             }
 
             try {
