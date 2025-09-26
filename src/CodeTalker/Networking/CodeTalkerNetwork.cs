@@ -251,8 +251,6 @@ StackTrace:
                 return;
             }
 
-            if (dbg)
-                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{binWrapper.PacketSignature}\"");
             if (dbg) {
                 CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
             }
