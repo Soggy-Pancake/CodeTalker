@@ -8,7 +8,7 @@ namespace CodeTalker.Packets;
 public abstract class BinaryPacketBase {
 
     /// <summary>
-    /// A 'GUID' for this packet type. Truncated to 8 characters. ASCII CHARACTERS ONLY!
+    /// Used to identify the packet type. Must not encode to more than 255 bytes. 
     /// </summary>
     public abstract string PacketSignature { get; }
 
