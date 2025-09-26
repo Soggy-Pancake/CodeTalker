@@ -253,6 +253,9 @@ StackTrace:
 
             if (dbg)
                 CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{binWrapper.PacketSignature}\"");
+            if (dbg) {
+                CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
+            }
 
             BinaryPacketBase bPacket;
             try {
@@ -265,15 +268,17 @@ StackTrace:
                     throw new InvalidOperationException("Failed to create instance of binary packet type!");
                 }
             } catch (Exception ex) {
-                CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet!\nStackTrace: {ex}");
+                CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
+                CodeTalkerPlugin.Log.LogError($"Full message: {Encoding.UTF8.GetString(rawData)}");
+                CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
                 return;
             }
 
             if (dbg) {
-                CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
                 CodeTalkerPlugin.Log.LogDebug($"Heard {ret} from GetLobbyChat. Sender {senderID}, type {messageType}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
+                CodeTalkerPlugin.Log.LogDebug($"Full message: {Encoding.UTF8.GetString(rawData)}");
                 CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{binWrapper.PacketSignature}\"");
             }
 
             try {
