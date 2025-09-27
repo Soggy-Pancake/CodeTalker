@@ -8,11 +8,13 @@ namespace CodeTalker.Examples;
 
 public class SimpleBinaryPacket : BinaryPacketBase {
 
-    public byte[] rawBytes;
+    public byte[] Payload;
 
     // You recieve the raw payload bytes here. You can parse them however you want.
     public override void Deserialize(byte[] data) {
         Debug.Log($"Received binary packet of length {data.Length}");
+        // This will print 0 though 9, though you can repace any of the numbers in the serialize
+        // method when anything that's 0-255
         foreach (var b in data)
             Debug.Log(b.ToString());
 
@@ -23,6 +25,7 @@ public class SimpleBinaryPacket : BinaryPacketBase {
     public override byte[] Serialize() {
         Debug.Log("Sending binary packet!");
 
+        // Just sending the numbers 0-9 as an example
         return new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     }
 
