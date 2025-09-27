@@ -36,6 +36,7 @@ public static class CodeTalkerNetwork {
     internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
     internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
     private static readonly Dictionary<string, PacketListener> packetListeners = [];
+    private static readonly Dictionary<string, Func<string, PacketBase>> packetDeserializers = [];
 
     struct BinaryListenerEntry {
         public BinaryPacketListener Listener;
@@ -66,6 +67,7 @@ public static class CodeTalkerNetwork {
         }
 
         packetListeners.Add(typeName, listener);
+        packetDeserializers.Add(typeName, (payload) => JsonConvert.DeserializeObject<T>(payload, PacketSerializer.JSONOptions)!);
 
         return true;
     }
@@ -191,7 +193,7 @@ Abridged Packet:
             }
 
             try {
-                if (JsonConvert.DeserializeObject<PacketBase>(wrapper.PacketPayload, PacketSerializer.JSONOptions) is PacketBase inPacket) {
+                if (packetDeserializers[wrapper.PacketType](wrapper.PacketPayload) is PacketBase inPacket) {
                     inType = inPacket.GetType();
                     packet = inPacket;
                 } else

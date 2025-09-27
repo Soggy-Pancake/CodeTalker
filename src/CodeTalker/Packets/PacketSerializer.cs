@@ -13,7 +13,7 @@ public static class PacketSerializer
   /// </summary>
   internal static readonly JsonSerializerSettings JSONOptions = new()
   {
-    TypeNameHandling = TypeNameHandling.Objects,
+    TypeNameHandling = TypeNameHandling.None,
     PreserveReferencesHandling = PreserveReferencesHandling.Objects,
     Formatting = Formatting.None,
     NullValueHandling = NullValueHandling.Ignore,
