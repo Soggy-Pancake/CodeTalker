@@ -38,6 +38,8 @@ public static class CodeTalkerNetwork {
     private static readonly Dictionary<string, PacketListener> packetListeners = [];
     private static readonly Dictionary<string, Func<string, PacketBase>> packetDeserializers = [];
 
+    static string lastSkippedPacketType = "";
+
     struct BinaryListenerEntry {
         public BinaryPacketListener Listener;
         public Type PacketType;
@@ -109,7 +111,7 @@ public static class CodeTalkerNetwork {
             return false;
         }
 
-        binaryListeners.Add(signature, new BinaryListenerEntry{ Listener = listener, PacketType = type});
+        binaryListeners.Add(signature, new BinaryListenerEntry { Listener = listener, PacketType = type });
         return true;
     }
 
@@ -186,9 +188,10 @@ Abridged Packet:
 
 
             if (!packetListeners.TryGetValue(wrapper.PacketType, out var listener)) {
-                if (dbg)
+                if (dbg && wrapper.PacketType != lastSkippedPacketType) {
                     CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {wrapper.PacketType} because this client does not have it installed, this is safe!");
-
+                    lastSkippedPacketType = wrapper.PacketType;
+                }
                 return;
             }
 
@@ -248,8 +251,10 @@ StackTrace:
             }
 
             if (!binaryListeners.TryGetValue(binWrapper.PacketSignature, out var listenerEntry)) {
-                if (dbg)
+                if (dbg && binWrapper.PacketSignature != lastSkippedPacketType) {
                     CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of signature: {binWrapper.PacketSignature} because this client does not have it installed, this is safe!");
+                    lastSkippedPacketType = binWrapper.PacketSignature;
+                }
                 return;
             }
 
