@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -268,13 +268,20 @@ StackTrace:
                 object instance = Activator.CreateInstance(inType);
                 if (instance is BinaryPacketBase) {
                     bPacket = (BinaryPacketBase)instance;
-                    bPacket.Deserialize(binWrapper.FullPacketBytes);
+                    try {
+                        bPacket.Deserialize(binWrapper.FullPacketBytes);
+                    } catch (Exception ex) {
+                        CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
+                        CodeTalkerPlugin.Log.LogError($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
+                        CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
+                        return;
+                    }
                 } else {
                     throw new InvalidOperationException("Failed to create instance of binary packet type!");
                 }
             } catch (Exception ex) {
-                CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
+                CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
+                CodeTalkerPlugin.Log.LogError($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
                 CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
                 return;
             }
