@@ -31,7 +31,7 @@ public static class CodeTalkerNetwork {
     /// <summary>
     /// This should only be modified for BREAKING changes in packet structure
     /// </summary>
-    private const ushort NETWORK_PACKET_VERSION = 2;
+    private const ushort NETWORK_PACKET_VERSION = 3;
 
     internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
     internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
