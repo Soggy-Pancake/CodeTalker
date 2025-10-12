@@ -89,17 +89,8 @@ public static class CodeTalkerNetwork {
     public static bool RegisterBinaryListener<T>(BinaryPacketListener listener) where T : BinaryPacketBase, new() {
 
         var type = typeof(T);
-        var prop = type.GetProperty("PacketSignature", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                     ?? (MemberInfo)type.GetField("PacketSignature", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-        string signature;
-
-        if (prop is PropertyInfo pi)
-            signature = (string)pi.GetValue(new T());
-        else {
-            CodeTalkerPlugin.Log.LogError($"Failed to register binary listenerEntry for type {type.FullName}, PacketSignature property not found!");
-            return false;
-        }
+        BinaryPacketBase instance = new T();
+        string signature = instance.PacketSignature;
 
         if (binaryListeners.ContainsKey(signature))
             return false;
