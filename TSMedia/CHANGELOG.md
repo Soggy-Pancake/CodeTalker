@@ -1,5 +1,28 @@
 # Changelog
 
+## Version 2.0.0
+
+- New author ig
+- Update package info
+	- new icon to differentiate from original
+		- just a frame from rosedoMeow emote (artist is @roseDoodle, this is just a silly mod icon but figured ig at least gib credit/sauce)
+	- Still uses the same mod GUID so it will replace existing installs during loading
+- **BREAKING** changes to json packets
+	- Type handling is now done by linking the packet type to the packet handler
+		- Should fix a potential exploit (by Marioalexsan)
+	- Existing code won't need to update, just the library
+	- Updated packet version to 3
+	- MetaInf removed from json packets
+- Binary packet support!
+	- New binary classes for sending and receiving binary data
+		- You MUST deserialize and serialize binary packets yourself
+			- This is for ADVANCED users only
+		- Allows for *much* denser packets for the same info
+	- New example files have been included
+- Debugging improvements
+	- Doesn't print packet if the packet is not registered
+	- Doesn't print that the packet was ignored if the type matches the last ignored packet
+
 ## Version 1.2.0
 
 - Adds a packet wrapper to graceful handle when the client does not have the same mods installed as the sender.
