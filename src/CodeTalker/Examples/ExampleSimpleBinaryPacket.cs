@@ -14,11 +14,11 @@ public class SimpleBinaryPacket : BinaryPacketBase {
     public override void Deserialize(byte[] data) {
         Debug.Log($"Received binary packet of length {data.Length}");
         // This will print 0 though 9, though you can repace any of the numbers in the serialize
-        // method when anything that's 0-255
+        // method with anything that's 0-255
         foreach (var b in data)
             Debug.Log(b.ToString());
 
-        rawBytes = data;
+        Payload = data;
     }
 
     // Do ur deserialization here. The only limit is the max packet size of 4kb
