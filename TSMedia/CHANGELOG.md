@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 2.0.1
+
+- Marked `SendBinaryNetworkPacket` as obsolete in favor of `SendNetworkPacket` with an overload.
+- Attempting to send a packet that would result in a buffer larger than 4096 bytes will log an error and fail to send.
+
 ## Version 2.0.0
 
 - New author ig
