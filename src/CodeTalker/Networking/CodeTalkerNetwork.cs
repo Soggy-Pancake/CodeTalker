@@ -116,6 +116,12 @@ public static class CodeTalkerNetwork {
 
         var rawWrapper = $"{CODE_TALKER_SIGNATURE}{JsonConvert.SerializeObject(wrapper, PacketSerializer.JSONOptions)}";
         var bytes = Encoding.UTF8.GetBytes(rawWrapper);
+
+        if(bytes.Length > 4096) {
+            CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {bytes.Length}");
+            return;
+        }
+
         SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), bytes, bytes.Length);
     }
 
@@ -126,6 +132,11 @@ public static class CodeTalkerNetwork {
     public static void SendBinaryNetworkPacket(BinaryPacketBase packet) {
         byte[] serializedPacket = packet.Serialize();
         BinaryPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket);
+
+        if (wrapper.FullPacketBytes.Length > 4096) {
+            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.FullPacketBytes.Length}");
+            return;
+        }
 
         SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
     }
