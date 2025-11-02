@@ -129,6 +129,23 @@ public static class CodeTalkerNetwork {
     /// Wraps and sends a binary packet to all clients on the Code Talker network
     /// </summary>
     /// <param name="packet"></param>
+    public static void SendNetworkPacket(BinaryPacketBase packet) {
+        byte[] serializedPacket = packet.Serialize();
+        BinaryPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket);
+
+        if(wrapper.FullPacketBytes.Length > 4096) {
+            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.FullPacketBytes.Length}");
+            return;
+        }
+
+        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
+    }
+
+    /// <summary>
+    /// Wraps and sends a binary packet to all clients on the Code Talker network
+    /// </summary>
+    /// <param name="packet"></param>
+    [Obsolete("Use SendNetworkPacket(BinaryPacketBase) instead")]
     public static void SendBinaryNetworkPacket(BinaryPacketBase packet) {
         byte[] serializedPacket = packet.Serialize();
         BinaryPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket);
