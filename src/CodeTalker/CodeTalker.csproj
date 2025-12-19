@@ -1,57 +1,51 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
+	<PropertyGroup>
+		<AssemblyName>CodeTalker</AssemblyName>
+		<Product>$(AssemblyName)</Product>
+		<Version>2.0.1</Version>
+		<Authors>Robyn+Soggy_Pancake</Authors>
 
-    <AssemblyName>CodeTalker</AssemblyName>
-    <Product>$(AssemblyName)</Product>
-    <Version>2.0.1</Version>
-    <Authors>Robyn+Soggy_Pancake</Authors>
+		<TargetFramework>netstandard2.1</TargetFramework>
+	</PropertyGroup>
 
-    <TargetFramework>netstandard2.1</TargetFramework>
-  </PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+		<PackageReference Include="UnityEngine.Modules" Version="2021.3.16">
+			<IncludeAssets>all</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
 
-  <ItemGroup>
-    <PackageReference Include="UnityEngine.Modules" Version="2021.3.16">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
+		<PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+		<PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
 
-  <ItemGroup>
-    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2"
-      PrivateAssets="all" />
+		<Reference Include="$(DependsDir)/Assembly-CSharp.dll" Private="False" />
+		<Reference Include="$(DependsDir)/com.rlabrecque.steamworks.net.dll" Publicize="false" Private="False" />
+		<Reference Include="$(DependsDir)/Newtonsoft.Json.dll" Publicize="false" Private="False" />
+	</ItemGroup>
 
-    <Reference Include="$(DependsDir)/Assembly-CSharp.dll" Publicize="true" Private="False"  />
-    <Reference Include="$(DependsDir)/com.rlabrecque.steamworks.net.dll" Publicize="false" Private="False"  />
-    <Reference Include="$(DependsDir)/Newtonsoft.Json.dll" Publicize="false" Private="False"  />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="Examples/*.cs" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Examples/*.cs" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="BepInEx.Analyzers" PrivateAssets="all" Version="1.*" />
 
-  <ItemGroup>
-    <PackageReference
-      Include="BepInEx.Analyzers"
-      PrivateAssets="all"
-      Version="1.*" />
+		<PackageReference Include="BepInEx.Core" Version="5.4.*" />
+	</ItemGroup>
 
-    <PackageReference
-      Include="BepInEx.Core"
-      Version="5.4.*" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="../../README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Include="../../README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
+	<PropertyGroup>
+		<PackageProjectUrl>https://github.com/Soggy-Pancake/CodeTalker</PackageProjectUrl>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup> 
 
-  <PropertyGroup>
-    <PackageProjectUrl>https://github.com/Soggy-Pancake/CodeTalker</PackageProjectUrl>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  </PropertyGroup>
-
-  <Import Project="$(SolutionRoot)Config.Build.user.props" />
+	<Import Project="$(SolutionRoot)Config.Build.user.props" />
 
 </Project>
