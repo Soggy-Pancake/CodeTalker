@@ -199,7 +199,7 @@ public static class CodeTalkerNetwork {
                 CodeTalkerPlugin.Log.LogError($"""
 Error while receiving a packet!
 Exception: {ex.GetType().Name}
-Abridged Packet:
+Packet:
 {aData}
 """);
                 return;
@@ -270,7 +270,7 @@ StackTrace:
             }
 
             if (!binaryListeners.TryGetValue(binWrapper.PacketSignature, out var listenerEntry)) {
-                if (dbg && binWrapper.PacketSignature != lastSkippedPacketType) {
+                if (dbg && (binWrapper.PacketSignature != lastSkippedPacketType)) {
                     CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of signature: {binWrapper.PacketSignature} because this client does not have it installed, this is safe!");
                     lastSkippedPacketType = binWrapper.PacketSignature;
                 }
