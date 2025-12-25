@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using BepInEx.Bootstrap;
 using CodeTalker.Packets;
+using Mirror;
 using Newtonsoft.Json;
 using Steamworks;
 
