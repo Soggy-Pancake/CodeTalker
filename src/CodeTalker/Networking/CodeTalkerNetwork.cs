@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using BepInEx.Bootstrap;
 using CodeTalker.Packets;
@@ -159,6 +159,73 @@ public static class CodeTalkerNetwork {
         SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
     }
 
+#region SteamNetworkingMessages
+    /// <summary>
+    /// Sends a binary packet to a specific player on the Code Talker network (P2P)
+    /// </summary>
+    /// <param name="player"></param>
+    /// <param name="packet"></param>
+    public static void SendNetworkPacket(Player player, BinaryPacketBase packet) {
+        byte[] serializedPacket = packet.Serialize();
+        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, player.netId);
+        SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
+    }
+
+    /// <summary>
+    /// Sends a JSON packet to a specific player on the Code Talker network (P2P)
+    /// </summary>
+    /// <param name="player"></param>
+    /// <param name="packet"></param>
+    public static void SendNetworkPacket(Player player, PacketBase packet) {
+        string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
+        PacketWrapper jsonWrapper = new(GetTypeNameString(packet.GetType()), serializedPacket);
+        //byte[] rawPacket = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(jsonWrapper, PacketSerializer.JSONOptions));
+        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON, player.netId);
+        SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
+    }
+
+    /// <summary>
+    /// Sends a binary packet to a specific player on the Code Talker network (P2P)
+    /// </summary>
+    /// <param name="steamID"></param>
+    /// <param name="packet"></param>
+    public static void SendNetworkPacket(ulong steamID, BinaryPacketBase packet) {
+        byte[] serializedPacket = packet.Serialize();
+        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary);
+        SendSteamNetworkingMessage(new CSteamID(steamID), wrapper);
+    }
+
+    /// <summary>
+    /// Sends a JSON packet to a specific player on the Code Talker network (P2P)
+    /// </summary>
+    /// <param name="steamID"></param>
+    /// <param name="packet"></param>
+    public static void SendNetworkPacket(ulong steamID, PacketBase packet) {
+        string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
+        //PacketWrapper jsonWrapper = new(GetTypeNameString(packet.GetType()), serializedPacket);
+        //byte[] rawPacket = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(jsonWrapper, PacketSerializer.JSONOptions));
+        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON);
+        SendSteamNetworkingMessage(new CSteamID(steamID), wrapper);
+    }
+
+    /// <summary>
+    /// Handles sending the packet over Steam Networking Messages
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="wrappedPacket"></param>
+    internal static void SendSteamNetworkingMessage(CSteamID id, P2PPacketWrapper wrappedPacket) {
+        SteamNetworkingIdentity target = new();
+        target.SetSteamID(id);
+        GCHandle packetBytesHandle = GCHandle.Alloc(wrappedPacket.PacketBytes, GCHandleType.Pinned);
+        try {
+            IntPtr dataPtr = packetBytesHandle.AddrOfPinnedObject();
+            SteamNetworkingMessages.SendMessageToUser(ref target, dataPtr, (uint)wrappedPacket.PacketBytes.Length, 0, 0);
+        } catch { }
+        packetBytesHandle.Free();
+    }
+#endregion SteamNetworkingMessages
+
+
     internal static void OnNetworkMessage(LobbyChatMsg_t message) {
         bool dbg = CodeTalkerPlugin.EnablePacketDebugging.Value;
 
@@ -171,8 +238,8 @@ public static class CodeTalkerNetwork {
         var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
         string data = Encoding.UTF8.GetString(rawData[..ret]);
 
-        if (!data.StartsWith(CODE_TALKER_SIGNATURE) && !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE))
-            return;
+        HandleNetworkMessage(senderID, rawData[..ret]);
+    }
 
         PacketWrapper wrapper;
         PacketBase packet;
