@@ -35,7 +35,7 @@
     Condition="'$(DeployToProd)' == 'true'">
     <Message Text="Deploy -> $(PluginsDir)/$(FinalAssemblyName)" Importance="High" />
     <Copy
-      SourceFiles="$(OutputPath)$(FinalAssemblyName)"
+      SourceFiles="$(OutputPath)$(FinalAssemblyName);$(OutputPath)K4os.Compression.LZ4.dll;$(OutputPath)ZstdSharp.dll"
       DestinationFolder="$(PluginsDir)"
       Condition="Exists('$(OutputPath)$(FinalAssemblyName)')" />
   </Target>
