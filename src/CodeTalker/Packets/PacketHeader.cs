@@ -8,17 +8,22 @@ namespace CodeTalker.Packets;
 /// need to ever use this class manually
 /// </summary>
 /// <param name="senderID">The steam64 of the packet's origin</param>
-public class PacketHeader(ulong senderID)
-{
+/// <param name="targetNetId">Target player's net ID</param>
+public class PacketHeader(ulong senderID, uint targetNetId = 0) {
   /// <summary>
   /// The Steam64 of the packet's origin
   /// </summary>
   public readonly ulong SenderID = senderID;
 
-  /// <summary>
-  /// Returns <em>TRUE</em> if the packet's origin is identical to the
-  /// lobby owner.
-  /// </summary>
-  public bool SenderIsLobbyOwner =>
+    /// <summary>
+    /// Target player's net ID
+    /// </summary>
+    public readonly ulong TargetNetId = targetNetId;
+
+    /// <summary>
+    /// Returns <em>TRUE</em> if the packet's origin is identical to the
+    /// lobby owner.
+    /// </summary>
+    public bool SenderIsLobbyOwner =>
     SteamMatchmaking.GetLobbyOwner(new(SteamLobby._current._currentLobbyID)).m_SteamID == SenderID;
 }
