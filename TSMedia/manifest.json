@@ -1,7 +1,10 @@
 {
-  "name": "CodeYapper",
-  "description": "A simple library to abstract away networking",
-  "version_number": "2.0.1",
-  "dependencies": [],
-  "website_url": "https://github.com/Soggy-Pancake/CodeTalker"
+    "name": "CodeYapper",
+    "description": "A simple library to abstract away networking",
+    "version_number": "2.0.1",
+    "dependencies": [
+        "Soggy_Pancake-K4os_Compression_LZ4-1.3.8",
+        "Soggy_Pancake-ZstdSharp_Port-0.8.6"
+    ],
+    "website_url": "https://github.com/Soggy-Pancake/CodeTalker"
 }
