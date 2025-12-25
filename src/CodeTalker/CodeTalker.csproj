@@ -20,6 +20,7 @@
 		<PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
 
 		<Reference Include="$(DependsDir)/Assembly-CSharp.dll" Private="False" />
+		<Reference Include="$(DependsDir)/Mirror*.dll" Private="False" />
 		<Reference Include="$(DependsDir)/com.rlabrecque.steamworks.net.dll" Publicize="false" Private="False" />
 		<Reference Include="$(DependsDir)/Newtonsoft.Json.dll" Publicize="false" Private="False" />
 	</ItemGroup>
