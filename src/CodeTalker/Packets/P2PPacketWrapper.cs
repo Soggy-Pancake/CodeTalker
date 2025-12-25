@@ -52,7 +52,7 @@ internal class P2PPacketWrapper {
 
     // Reading packet in
     internal P2PPacketWrapper(byte[] rawPacketData) {
-        CodeTalkerPlugin.Log.LogDebug($"raw packet data hex: {BitConverter.ToString(rawPacketData).Replace("-", "")}");
+        //CodeTalkerPlugin.Log.LogDebug($"raw packet data hex: {BitConverter.ToString(rawPacketData).Replace("-", "")}");
         int sigSize = rawPacketData[0];
         PacketSignature = Encoding.UTF8.GetString(rawPacketData, 1, sigSize);
         int offset = sigSize + 1;
@@ -60,6 +60,6 @@ internal class P2PPacketWrapper {
         TargetNetId = BitConverter.ToUInt32(rawPacketData, offset);
         offset += 4;
         PacketBytes = rawPacketData[offset..];
-        CodeTalkerPlugin.Log.LogDebug($"Packet hex (no header): {BitConverter.ToString(PacketBytes).Replace("-", "")}");
+        //CodeTalkerPlugin.Log.LogDebug($"Packet hex (no header): {BitConverter.ToString(PacketBytes).Replace("-", "")}");
     }
 }
