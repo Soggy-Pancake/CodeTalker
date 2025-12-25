@@ -35,6 +35,7 @@ public static class CodeTalkerNetwork {
 
     internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
     internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
+    internal static string CODE_TALKER_P2P_SIGNATURE = $"!CTN:P2P{NETWORK_PACKET_VERSION}!";
     private static readonly Dictionary<string, PacketListener> packetListeners = [];
     private static readonly Dictionary<string, Func<string, PacketBase>> packetDeserializers = [];
 
@@ -179,6 +180,12 @@ public static class CodeTalkerNetwork {
 
         //We do it this way to make sure we're not blamed for errors
         //that other networked mods may cause
+
+        string data = Encoding.UTF8.GetString(rawData);
+        if (!data.StartsWith(CODE_TALKER_SIGNATURE) && 
+                !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE) && 
+                !data.StartsWith(CODE_TALKER_P2P_SIGNATURE))
+            return;
 
         if (data.StartsWith(CODE_TALKER_SIGNATURE)) {
             data = data.Replace(CODE_TALKER_SIGNATURE, string.Empty);
