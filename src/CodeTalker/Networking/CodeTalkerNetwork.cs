@@ -241,6 +241,10 @@ public static class CodeTalkerNetwork {
         HandleNetworkMessage(senderID, rawData[..ret]);
     }
 
+    internal static void OnSteamSessionRequest(SteamNetworkingMessagesSessionRequest_t request) {
+        CodeTalkerPlugin.Log.LogDebug($"Accepting messages session request from {request.m_identityRemote.GetSteamID()}");
+        SteamNetworkingMessages.AcceptSessionWithUser(ref request.m_identityRemote);
+    }
         PacketWrapper wrapper;
         PacketBase packet;
         Type inType;
