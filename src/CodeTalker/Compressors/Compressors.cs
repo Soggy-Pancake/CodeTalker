@@ -13,7 +13,11 @@ public static class Compressors {
     /// <summary>
     /// Type of compression to use
     /// </summary>
-    public enum CompressionType {
+    public enum CompressionType { // WARNING - CHANGING ORDER WILL BREAK COMPATIBILITY, ONLY APPEND
+        /// <summary>
+        /// No compression
+        /// </summary>
+        None,
         /// <summary>
         /// Brotli compression (default)
         /// </summary>
