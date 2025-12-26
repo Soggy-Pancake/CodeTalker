@@ -2,8 +2,13 @@
 using System.IO.Compression;
 using ZstdSharp;
 using K4os.Compression.LZ4;
+using System;
+using BepInEx.Logging;
+using System.Diagnostics;
+using CodeTalker.Packets;
+using Newtonsoft.Json;
 
-namespace CodeTalker.Compressors;
+namespace CodeTalker;
 
 /// <summary>
 /// Provides helper methods for compressing and decompressing data
