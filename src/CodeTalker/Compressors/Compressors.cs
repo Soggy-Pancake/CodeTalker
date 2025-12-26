@@ -105,4 +105,47 @@ public static class Compressors {
                 return data;
         }
     }
+
+    /// <summary>
+    /// Test compression ratios for different algorithms, this is only for testing purposes for mod developers
+    /// </summary>
+    /// <param name="rawBytes"></param>
+    public static void CompressTest(byte[] rawBytes) {
+        Stopwatch sw = new Stopwatch();
+        CompressionLevel compressionLevel = CompressionLevel.Fastest;
+        long nsPerTick = (1000000000) / Stopwatch.Frequency;
+        // Dry run first to prevent library loading and initilization from influencing results
+        foreach (CompressionType type in Enum.GetValues(typeof(CompressionType))) {
+            if (type == CompressionType.None)
+                continue;
+            Compress(rawBytes, type, CompressionLevel.Fastest);
+            Compress(rawBytes, type, CompressionLevel.Optimal); // Do optimal to prevent any potential caching or checks if its the same as last time
+        }
+
+        // Fastest then Optimal
+        for (int i = 0; i < 2; i++) {
+            CodeTalkerPlugin.Log.LogInfo($"{compressionLevel}:");
+            foreach (CompressionType type in Enum.GetValues(typeof(CompressionType))) {
+                if (type == CompressionType.None)
+                    continue;
+                sw.Start();
+                byte[] compressed = Compress(rawBytes, type, compressionLevel);
+                sw.Stop();
+
+                CodeTalkerPlugin.Log.LogInfo($"{type}: {compressed.Length} bytes - ratio: {rawBytes.Length / (float)compressed.Length} - time to compress: {(sw.ElapsedTicks * nsPerTick) / 1000}us");
+                sw.Reset();
+            }
+            compressionLevel = CompressionLevel.Optimal;
+        }
+    }
+
+    /// <summary>
+    /// Test compression ratios for different algorithms, this is only for testing purposes for mod developers
+    /// </summary>
+    /// <param name="packet"></param>
+    public static void CompressTest(PacketBase packet) {
+        string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
+        byte[] rawBytes = System.Text.Encoding.UTF8.GetBytes(rawPacket);
+        CompressTest(rawBytes);
+    }
 }
