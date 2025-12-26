@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -8,6 +9,7 @@ using CodeTalker.Packets;
 using Mirror;
 using Newtonsoft.Json;
 using Steamworks;
+using static CodeTalker.Compressors;
 
 namespace CodeTalker.Networking;
 
@@ -160,15 +162,17 @@ public static class CodeTalkerNetwork {
         SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
     }
 
-#region SteamNetworkingMessages
+    #region SteamNetworkingMessages
     /// <summary>
     /// Sends a binary packet to a specific player on the Code Talker network (P2P)
     /// </summary>
     /// <param name="player"></param>
     /// <param name="packet"></param>
-    public static void SendNetworkPacket(Player player, BinaryPacketBase packet) {
+    /// <param name="compressionType">Automatically apply compression</param>
+    /// <param name="compressionLevel">Level of compresison that will be applied</param>
+    public static void SendNetworkPacket(Player player, BinaryPacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, player.netId);
+        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, compressionType, compressionLevel, player.netId);
         SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
     }
 
@@ -177,11 +181,13 @@ public static class CodeTalkerNetwork {
     /// </summary>
     /// <param name="player"></param>
     /// <param name="packet"></param>
-    public static void SendNetworkPacket(Player player, PacketBase packet) {
+    /// <param name="compressionType">Automatically apply compression</param>
+    /// <param name="compressionLevel">Level of compresison that will be applied</param>
+    public static void SendNetworkPacket(Player player, PacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
         PacketWrapper jsonWrapper = new(GetTypeNameString(packet.GetType()), serializedPacket);
         //byte[] rawPacket = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(jsonWrapper, PacketSerializer.JSONOptions));
-        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON, player.netId);
+        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON, compressionType, compressionLevel, player.netId);
         SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
     }
 
@@ -190,9 +196,11 @@ public static class CodeTalkerNetwork {
     /// </summary>
     /// <param name="steamID"></param>
     /// <param name="packet"></param>
-    public static void SendNetworkPacket(ulong steamID, BinaryPacketBase packet) {
+    /// <param name="compressionType">Automatically apply compression</param>
+    /// <param name="compressionLevel">Level of compresison that will be applied</param>
+    public static void SendNetworkPacket(ulong steamID, BinaryPacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary);
+        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, compressionType, compressionLevel);
         SendSteamNetworkingMessage(new CSteamID(steamID), wrapper);
     }
 
@@ -201,11 +209,11 @@ public static class CodeTalkerNetwork {
     /// </summary>
     /// <param name="steamID"></param>
     /// <param name="packet"></param>
-    public static void SendNetworkPacket(ulong steamID, PacketBase packet) {
+    /// <param name="compressionType">Automatically apply compression</param>
+    /// <param name="compressionLevel">Level of compresison that will be applied</param>
+    public static void SendNetworkPacket(ulong steamID, PacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
-        //PacketWrapper jsonWrapper = new(GetTypeNameString(packet.GetType()), serializedPacket);
-        //byte[] rawPacket = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(jsonWrapper, PacketSerializer.JSONOptions));
-        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON);
+        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON, compressionType, compressionLevel);
         SendSteamNetworkingMessage(new CSteamID(steamID), wrapper);
     }
 
