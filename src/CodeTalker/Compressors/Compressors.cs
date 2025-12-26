@@ -34,7 +34,6 @@ public static class Compressors {
         /// GZip compression
         /// </summary>
         GZip,
-        
     }
 
     /// <summary>
@@ -47,20 +46,25 @@ public static class Compressors {
     public static byte[] Compress(byte[] data, CompressionType type = CompressionType.Brotli, CompressionLevel level = CompressionLevel.Fastest) {
         switch (type) {
             case CompressionType.Brotli:
-                var brotliCompressor = new BrotliStream(new MemoryStream(data), level);
-                MemoryStream brotliOutStream = new MemoryStream();
-                brotliCompressor.CopyTo(brotliOutStream);
-                return brotliOutStream.ToArray();
+                MemoryStream input = new MemoryStream(data);
+                MemoryStream outStream = new MemoryStream();
+                var brotliCompressor = new BrotliStream(outStream, level);
+                input.CopyTo(brotliCompressor);
+                brotliCompressor.Close();
+                brotliCompressor.DisposeAsync();
+                return outStream.ToArray();
             case CompressionType.ZStd:
-                var compressor = new Compressor();
+                var compressor = new Compressor(level == CompressionLevel.Fastest ? 3 : 10); // 3 is default, 10 is a number I randomly picked
                 return compressor.Wrap(data).ToArray();
             case CompressionType.GZip:
-                var GZcompressor = new GZipStream(new MemoryStream(data), level);
-                MemoryStream outStream = new MemoryStream();
-                GZcompressor.CopyTo(outStream);
+                input = new MemoryStream(data);
+                outStream = new MemoryStream();
+                var GZcompressor = new GZipStream(outStream, level);
+                input.CopyTo(GZcompressor);
+                GZcompressor.Close();
                 return outStream.ToArray();
             case CompressionType.LZ4:
-                return LZ4Pickler.Pickle(data);
+                return LZ4Pickler.Pickle(data, level == CompressionLevel.Fastest ? LZ4Level.L00_FAST : LZ4Level.L11_OPT);
             default:
                 CodeTalkerPlugin.Log.LogError($"[CodeTalker] Unknown compression type: {type}");
                 return data;
@@ -77,16 +81,16 @@ public static class Compressors {
     public static byte[] Decompress(byte[] data, CompressionType type = CompressionType.Brotli, CompressionLevel level = CompressionLevel.Fastest) {
         switch (type) {
             case CompressionType.Brotli:
-                var brotliDecompressor = new BrotliStream(new MemoryStream(data), level);
-                MemoryStream brotliOutStream = new MemoryStream();
-                brotliDecompressor.CopyTo(brotliOutStream);
-                return brotliOutStream.ToArray();
+                var brotliDecompressor = new BrotliStream(new MemoryStream(data), CompressionMode.Decompress);
+                MemoryStream outStream = new MemoryStream();
+                brotliDecompressor.CopyTo(outStream);
+                return outStream.ToArray();
             case CompressionType.ZStd:
                 var decompressor = new Decompressor();
                 return decompressor.Unwrap(data).ToArray();
             case CompressionType.GZip:
-                var GZdecompressor = new GZipStream(new MemoryStream(data), level);
-                MemoryStream outStream = new MemoryStream();
+                outStream = new MemoryStream();
+                var GZdecompressor = new GZipStream(new MemoryStream(data), CompressionMode.Decompress);
                 GZdecompressor.CopyTo(outStream);
                 return outStream.ToArray();
             case CompressionType.LZ4:
