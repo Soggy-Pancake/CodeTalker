@@ -1,5 +1,19 @@
 # Changelog
 
+## Version 2.1.0
+
+- Added support for P2P connections using SteamNetworkingMessages.
+	- Requires specifying a player or steamId to send the packet to, otherwise it will still use the lobby chat.
+	- JSON packets are't double serialized when using P2P and are slightly smaller.
+		- It used to store everything in json, only really holding the packet type and actual packet json. Now it just stores the packet json and the packet type is part of the binary p2p header.
+- Added compression helper methods. Packets aren't compressed by default! Options are:
+	- Brotli (Default)
+	- GZip
+	- LZ4
+	- ZStd
+- Packets can be autocompressed by CodeYapper by passing a compression type when sending.
+	- Only available for P2P packets for now (since it would break backwards compatibility).
+
 ## Version 2.0.1
 
 - Marked `SendBinaryNetworkPacket` as obsolete in favor of `SendNetworkPacket` with an overload.

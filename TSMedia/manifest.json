@@ -1,7 +1,7 @@
 {
     "name": "CodeYapper",
     "description": "A simple library to abstract away networking",
-    "version_number": "2.0.1",
+    "version_number": "2.1.0",
     "dependencies": [
         "Soggy_Pancake-K4os_Compression_LZ4-1.3.8",
         "Soggy_Pancake-ZstdSharp_Port-0.8.6"
