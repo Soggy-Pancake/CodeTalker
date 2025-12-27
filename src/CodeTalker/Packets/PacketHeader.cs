@@ -18,7 +18,7 @@ public class PacketHeader(ulong senderID, uint targetNetId = 0) {
     /// <summary>
     /// Target player's net ID
     /// </summary>
-    public readonly ulong TargetNetId = targetNetId;
+    public readonly uint TargetNetId = targetNetId;
 
     /// <summary>
     /// Returns <em>TRUE</em> if the packet's origin is identical to the
