@@ -27,3 +27,4 @@ Remove any json attributes as we wont be needing those anymore (unless you are s
 
 After testing that your packet serializes and deserialiszes correctly you are done! Enjoy your *hopefully* smaller packet size with better utilization of your network usage.
 
+> **Important:** Make sure that you only accept sensible values! Packets could be malformed, either on accident or intentionally, and could cause unintended behavior or exploits of your code! Your serialization methods are wrapped in a try block so don't worry about throwing an exception if something is wrong!
