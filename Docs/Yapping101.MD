@@ -48,7 +48,7 @@ void PacketListener(PacketHeader header, PacketBase p) {
 
 > Note: Keep in mind that when broadcasting a packet to lobby chat you will recieve your own packets! **This does not apply to P2P or targeted packets!**
 
-Then you need to register you listener using:
+Then you need to register your listener using:
 ```C#
 using CodeTalker.CodeTalkerNetwork;
 
@@ -96,4 +96,4 @@ Brotli does a fairly good job at compressing data efficently, however you should
 
 *Why use binary packets?*
 
-Binary packets are useful when you want the most compact packet possible. Floating point numbers can be extremely wateful when converting to and from JSON. For example, the number '10.283647' needs 9 bytes to store a 32 bit float (4 bytes!) and this is excluding the extra labels and formatting of JSON that doesn't contribute to the actual data being sent. It does make it human readable, but sacrifices size for labeling and formatting. Depending on your packet layout this might be a significant portion of your bandwidth! Beware that binary packets are for advanced users and requires being comfortable with byte arrays and potentially  bitwise operations as well.
+Binary packets are useful when you want the most compact packet possible. Floating point numbers can be extremely wasteful when converting to and from JSON. For example, the number '10.283647' needs 9 bytes to store a 32 bit float (4 bytes!) and this is excluding the extra labels and formatting of JSON that doesn't contribute to the actual data being sent. It does make it human readable, but sacrifices size for labeling and formatting. Depending on your packet layout this might be a significant portion of your bandwidth! Beware that binary packets are for advanced users and requires being comfortable with byte arrays and potentially bitwise operations as well.
