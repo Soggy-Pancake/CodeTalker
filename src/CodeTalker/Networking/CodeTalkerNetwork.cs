@@ -122,7 +122,7 @@ public static class CodeTalkerNetwork {
         var rawWrapper = $"{CODE_TALKER_SIGNATURE}{JsonConvert.SerializeObject(wrapper, PacketSerializer.JSONOptions)}";
         var bytes = Encoding.UTF8.GetBytes(rawWrapper);
 
-        if(bytes.Length > 4096) {
+        if (bytes.Length > 4096) {
             CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {bytes.Length}");
             return;
         }
@@ -138,7 +138,7 @@ public static class CodeTalkerNetwork {
         byte[] serializedPacket = packet.Serialize();
         BinaryPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket);
 
-        if(wrapper.FullPacketBytes.Length > 4096) {
+        if (wrapper.FullPacketBytes.Length > 4096) {
             CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.FullPacketBytes.Length}");
             return;
         }
@@ -275,8 +275,8 @@ public static class CodeTalkerNetwork {
         //that other networked mods may cause
 
         string data = Encoding.UTF8.GetString(rawData);
-        if (!data.StartsWith(CODE_TALKER_SIGNATURE) && 
-                !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE) && 
+        if (!data.StartsWith(CODE_TALKER_SIGNATURE) &&
+                !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE) &&
                 !data.StartsWith(CODE_TALKER_P2P_SIGNATURE))
             return;
 
@@ -518,7 +518,7 @@ StackTrace:
                 }
             }
 
-            if (p2pWrapper.PacketType == P2PPacketType.Binary) { 
+            if (p2pWrapper.PacketType == P2PPacketType.Binary) {
                 data = data.Replace(CODE_TALKER_BINARY_SIGNATURE, string.Empty);
 
                 // dont need binary wrapper we already parsed everything
