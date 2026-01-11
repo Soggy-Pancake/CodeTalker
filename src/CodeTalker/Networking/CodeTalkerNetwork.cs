@@ -254,6 +254,15 @@ public static class CodeTalkerNetwork {
         SteamNetworkingMessages.AcceptSessionWithUser(ref request.m_identityRemote);
     }
 
+    // Quick function to sanitize control characters from binary strings for logging
+    internal static string BinaryToUtf8String(byte[] data) {
+        return new string(Encoding.UTF8.GetString(data).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray());
+    }
+
+    internal static string BinaryToHexString(byte[] data) {
+        return BitConverter.ToString(data).Replace("-", "");
+    }
+
     internal static void HandleNetworkMessage(CSteamID senderID, byte[] rawData) {
         bool dbg = CodeTalkerPlugin.EnablePacketDebugging.Value;
 
