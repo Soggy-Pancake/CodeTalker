@@ -389,8 +389,8 @@ StackTrace:
                         bPacket.Deserialize(binWrapper.FullPacketBytes);
                     } catch (Exception ex) {
                         CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
-                        CodeTalkerPlugin.Log.LogError($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
-                        CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
+                        CodeTalkerPlugin.Log.LogError($"Full message: {BinaryToUtf8String(rawData)}");
+                        CodeTalkerPlugin.Log.LogError($"Full message hex: {BinaryToHexString(rawData)}");
                         return;
                     }
                 } else {
@@ -398,15 +398,15 @@ StackTrace:
                 }
             } catch (Exception ex) {
                 CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
-                CodeTalkerPlugin.Log.LogError($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
-                CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
+                CodeTalkerPlugin.Log.LogError($"Full message: {BinaryToUtf8String(rawData)}");
+                CodeTalkerPlugin.Log.LogError($"Full message hex: {BinaryToHexString(rawData)}");
                 return;
             }
 
             if (dbg) {
                 CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from GetLobbyChat. Sender {senderID}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
+                CodeTalkerPlugin.Log.LogDebug($"Full message: {BinaryToUtf8String(rawData)}");
+                CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BinaryToHexString(rawData)}");
                 CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{binWrapper.PacketSignature}\"");
             }
 
