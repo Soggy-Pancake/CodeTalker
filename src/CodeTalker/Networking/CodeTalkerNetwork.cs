@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using BepInEx.Bootstrap;
+using BepInEx.Logging;
 using CodeTalker.Packets;
 using Mirror;
 using Newtonsoft.Json;
@@ -435,6 +436,13 @@ StackTrace:
             data = data.Replace(CODE_TALKER_P2P_SIGNATURE, string.Empty);
             // TODO: Reduce code duplication at some point, this could be used for all packets at some point
 
+            void printWrapperInfo(P2PPacketWrapper wrapper, LogLevel level = LogLevel.Debug) {
+                CodeTalkerPlugin.Log.Log(level, $"Heard {rawData.Length} from steam network. Sender: {senderID} Type: {wrapper.PacketType} Compression: {wrapper.compression}");
+                CodeTalkerPlugin.Log.Log(level, $"Full message: {BinaryToUtf8String(rawData)}");
+                CodeTalkerPlugin.Log.Log(level, $"Full message hex: {BinaryToHexString(rawData)}");
+                CodeTalkerPlugin.Log.Log(level, $"Packet hex (decompressed): {BinaryToHexString(wrapper.PacketBytes)}");
+            }
+
             P2PPacketWrapper p2pWrapper;
             try {
                 p2pWrapper = new P2PPacketWrapper(rawData[(CODE_TALKER_P2P_SIGNATURE.Length)..]);
@@ -485,9 +493,7 @@ Expected Type: {p2pWrapper.PacketSignature}
                 }
 
                 if (dbg) {
-                    CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from steam network. Sender {senderID}");
-                    CodeTalkerPlugin.Log.LogDebug($"Full raw message: {data}");
-                    CodeTalkerPlugin.Log.LogError($"Packet hex: {BitConverter.ToString(p2pWrapper.PacketBytes).Replace("-", "")}");
+                    printWrapperInfo(p2pWrapper);
                     CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {p2pWrapper.PacketSignature}");
                 }
 
@@ -539,9 +545,7 @@ StackTrace:
                             bPacket.Deserialize(p2pWrapper.PacketBytes);
                         } catch (Exception ex) {
                             CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
-                            CodeTalkerPlugin.Log.LogError($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
-                            CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
-                            CodeTalkerPlugin.Log.LogError($"Packet hex: {BitConverter.ToString(p2pWrapper.PacketBytes).Replace("-", "")}");
+                            printWrapperInfo(p2pWrapper, LogLevel.Error);
                             return;
                         }
                     } else {
@@ -549,17 +553,12 @@ StackTrace:
                     }
                 } catch (Exception ex) {
                     CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
-                    CodeTalkerPlugin.Log.LogError($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
-                    CodeTalkerPlugin.Log.LogError($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
-                    CodeTalkerPlugin.Log.LogError($"Packet hex: {BitConverter.ToString(p2pWrapper.PacketBytes).Replace("-", "")}");
+                    printWrapperInfo(p2pWrapper, LogLevel.Error);
                     return;
                 }
 
                 if (dbg) {
-                    CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from steam network. Sender {senderID}");
-                    CodeTalkerPlugin.Log.LogDebug($"Full message: {new string(Encoding.UTF8.GetString(rawData).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray())}");
-                    CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BitConverter.ToString(rawData).Replace("-", "")}");
-                    CodeTalkerPlugin.Log.LogDebug($"Packet hex: {BitConverter.ToString(p2pWrapper.PacketBytes).Replace("-", "")}");
+                    printWrapperInfo(p2pWrapper);
                     CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{p2pWrapper.PacketSignature}\"");
                 }
 
