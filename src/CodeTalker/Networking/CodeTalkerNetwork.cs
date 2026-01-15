@@ -436,7 +436,7 @@ StackTrace:
             // TODO: Reduce code duplication at some point, this could be used for all packets at some point
 
             void printWrapperInfo(P2PPacketWrapper wrapper, LogLevel level = LogLevel.Debug) {
-                CodeTalkerPlugin.Log.Log(level, $"Heard {rawData.Length} from steam network. Sender: {senderID} Type: {wrapper.PacketType} Compression: {wrapper.compression}");
+                CodeTalkerPlugin.Log.Log(level, $"Heard {rawData.Length} from steam network. Sender: {senderID} Wrapper: {wrapper}");
                 CodeTalkerPlugin.Log.Log(level, $"Full message: {BinaryToUtf8String(rawData)}");
                 CodeTalkerPlugin.Log.Log(level, $"Full message hex: {BinaryToHexString(rawData)}");
                 CodeTalkerPlugin.Log.Log(level, $"Packet hex (decompressed): {BinaryToHexString(wrapper.PacketBytes)}");

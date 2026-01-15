@@ -79,4 +79,8 @@ internal class P2PPacketWrapper {
             PacketBytes = Decompress(PacketBytes, compression);
         //CodeTalkerPlugin.Log.LogDebug($"Packet hex (no header): {BitConverter.ToString(PacketBytes).Replace("-", "")}");
     }
+
+    public override string ToString() {
+        return $"[Type: {PacketType} Compression: {compression} Target: {TargetNetId}]";
+    }
 }
