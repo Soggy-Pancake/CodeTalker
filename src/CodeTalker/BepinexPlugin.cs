@@ -29,6 +29,8 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
         onSNMRequest = Callback<SteamNetworkingMessagesSessionRequest_t>.Create(CodeTalkerNetwork.OnSteamSessionRequest);
         Callback<SteamRelayNetworkStatus_t>.Create(OnSteamNetworkInitialized);
         Log.LogMessage("Created steam networking callbacks");
+
+        CodeTalkerNetwork.dbg = EnablePacketDebugging.Value;
     }
 
     void OnSteamNetworkInitialized(SteamRelayNetworkStatus_t status) {
@@ -53,7 +55,8 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
                     for (int i = 0; i < messageCount; i++) {
                         SteamNetworkingMessage_t msg = Marshal.PtrToStructure<SteamNetworkingMessage_t>(messagePtrBuffer[i]);
                         byte[] buffer = new byte[msg.m_cbSize];
-                        Log.LogInfo($"Recieved SNM packet of size {msg.m_cbSize}");
+                        if(EnablePacketDebugging.Value)
+                            Log.LogDebug($"Recieved SNM packet of size {msg.m_cbSize}");
                         try { // just to be safe and make absolutely sure it gets freed
                             Marshal.Copy(msg.m_pData, buffer, 0, (int)msg.m_cbSize);
                             CodeTalkerNetwork.HandleNetworkMessage(msg.m_identityPeer.GetSteamID(), buffer);
