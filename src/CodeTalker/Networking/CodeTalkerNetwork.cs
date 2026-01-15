@@ -165,7 +165,7 @@ public static class CodeTalkerNetwork {
         SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
     }
 
-    #region SteamNetworkingMessages
+#region SteamNetworkingMessages
     /// <summary>
     /// Sends a binary packet to a specific player on the Code Talker network (P2P)
     /// </summary>
@@ -538,8 +538,8 @@ StackTrace:
                 try {
                     inType = listenerEntry.PacketType;
                     object instance = Activator.CreateInstance(inType);
-                    if (instance is BinaryPacketBase) {
-                        bPacket = (BinaryPacketBase)instance;
+                    if (instance is BinaryPacketBase pkt) {
+                        bPacket = pkt;
                         try {
                             bPacket.Deserialize(p2pWrapper.PacketBytes);
                         } catch (Exception ex) {
