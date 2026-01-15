@@ -54,6 +54,8 @@ public static class CodeTalkerNetwork {
     internal static string GetTypeNameString(Type type) =>
       $"{type.Assembly.GetName().Name},{type.DeclaringType?.Name ?? "NONE"}:{type.Namespace ?? "NONE"}.{type.Name}";
 
+    internal static bool dbg = false;
+
     /// <summary>
     /// Registers a listenerEntry by packet type. Code Talker will call
     /// your listenerEntry when the specific System.Type is created from
@@ -237,8 +239,6 @@ public static class CodeTalkerNetwork {
 
 
     internal static void OnNetworkMessage(LobbyChatMsg_t message) {
-        bool dbg = CodeTalkerPlugin.EnablePacketDebugging.Value;
-
         if (dbg)
             CodeTalkerPlugin.Log.LogDebug("Called back!");
 
@@ -251,7 +251,8 @@ public static class CodeTalkerNetwork {
     }
 
     internal static void OnSteamSessionRequest(SteamNetworkingMessagesSessionRequest_t request) {
-        CodeTalkerPlugin.Log.LogDebug($"Accepting messages session request from {request.m_identityRemote.GetSteamID()}");
+        if (dbg)
+            CodeTalkerPlugin.Log.LogDebug($"Accepting messages session request from {request.m_identityRemote.GetSteamID()}");
         SteamNetworkingMessages.AcceptSessionWithUser(ref request.m_identityRemote);
     }
 
@@ -265,8 +266,6 @@ public static class CodeTalkerNetwork {
     }
 
     internal static void HandleNetworkMessage(CSteamID senderID, byte[] rawData) {
-        bool dbg = CodeTalkerPlugin.EnablePacketDebugging.Value;
-
         PacketWrapper wrapper;
         PacketBase packet;
         Type inType;
