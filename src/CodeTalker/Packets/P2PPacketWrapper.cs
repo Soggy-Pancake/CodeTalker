@@ -3,10 +3,12 @@ using System.IO.Compression;
 using System.Text;
 using CodeTalker;
 using CodeTalker.Networking;
-
+using static CodeTalker.Networking.CodeTalkerNetwork;
 using static CodeTalker.Compressors;
+using System.Buffers.Binary;
+using System.Linq;
 
-internal enum P2PPacketType : Byte { 
+internal enum P2PPacketType : Byte {
     JSON,
     Binary
 }
@@ -16,7 +18,7 @@ internal enum P2PPacketType : Byte {
 internal class P2PPacketWrapper {
     internal readonly byte[] PacketBytes;
 
-    internal readonly string PacketSignature;
+    internal readonly UInt64 PacketSignature;
 
     // This should allow both JSON and binary without having a different wrapper for each
     internal readonly P2PPacketType PacketType;
@@ -26,54 +28,78 @@ internal class P2PPacketWrapper {
     internal readonly uint TargetNetId; // Will be used to route packets to specific clients in future updates
 
     // For sending packets
-    internal P2PPacketWrapper(string sig, byte[] rawData, P2PPacketType packetType, CompressionType compressionType, CompressionLevel compressionLevel, uint targetNetId = 0) {
-        PacketSignature = sig;
-        PacketType = packetType;
-        TargetNetId = targetNetId;
+    internal P2PPacketWrapper(string sig, Span<byte> rawData, P2PPacketType packetType, CompressionType compressionType, CompressionLevel compressionLevel, uint targetNetId = 0) {
+        /*{ // Old array based implementation
+            PacketType = packetType;
+            TargetNetId = targetNetId;
 
-        string ctSig = CodeTalkerNetwork.CODE_TALKER_P2P_SIGNATURE;
-        byte[] signatureBytes = Encoding.UTF8.GetBytes(sig);
+            byte[] ctSig = CODE_TALKER_P2P_SIGNATURE;
+            byte[] signatureBytes = Encoding.UTF8.GetBytes(sig);
 
-        int headerSize = ctSig.Length + 1 + signatureBytes.Length + 5;
+            int headerSize = ctSig.Length + 1 + signatureBytes.Length + 5;
 
-        // Make header
-        // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureLength(1 Byte) PacketSignature(PacketSigLen bytes long)
-        // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
-        // targetNetId(4 bytes)
-        byte[] header = new byte[headerSize];
-        int offset = 0;
-        Array.Copy(Encoding.ASCII.GetBytes(ctSig), header, ctSig.Length);
-        offset += ctSig.Length;
-        header[offset++] = (byte)signatureBytes.Length;
-        Array.Copy(signatureBytes, 0, header, offset, signatureBytes.Length);
-        offset += signatureBytes.Length;
+            // Make header
+            // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureLength(1 Byte) PacketSignature(PacketSigLen bytes long)
+            // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
+            // targetNetId(4 bytes)
+            byte[] header = new byte[headerSize];
+            int offset = 0;
+            Array.Copy(ctSig, header, ctSig.Length);
+            offset += ctSig.Length;
+            header[offset++] = (byte)signatureBytes.Length;
+            Array.Copy(signatureBytes, 0, header, offset, signatureBytes.Length);
+            offset += signatureBytes.Length;
 
-        header[offset++] = (byte)((((int)compressionType << 4) & 0xf0) + ((int)packetType & 0x0f));
-        Array.Copy(BitConverter.GetBytes(targetNetId), 0, header, offset, 4);
+            header[offset++] = (byte)((((int)compressionType << 4) & 0xf0) + ((int)packetType & 0x0f));
+            Array.Copy(BitConverter.GetBytes(targetNetId), 0, header, offset, 4);
 
-        if (compressionType != CompressionType.None)
-            rawData = Compress(rawData, compressionType, compressionLevel);
+            if (compressionType != CompressionType.None)
+                rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
 
-        // Make a new array with the extra space for the signature then memcopy
-        PacketBytes = new byte[headerSize + rawData.Length];
-        Array.Copy(header, PacketBytes, header.Length);
-        Array.Copy(rawData, 0, PacketBytes, headerSize, rawData.Length);
+            // Make a new array with the extra space for the signature then memcopy
+            PacketBytes = new byte[headerSize + rawData.Length];
+            Span<byte> pkt = new Span<byte>(PacketBytes);
+            Array.Copy(header, PacketBytes, header.Length);
+            Array.Copy(rawData.ToArray(), 0, PacketBytes, headerSize, rawData.Length);
+        }*/
+        { // New Span based implementation
+            Span<byte> ctSig = CODE_TALKER_P2P_SIGNATURE;
+            Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
+            PacketSignature = signatureHash(signatureBytes);
+
+            if (compressionType != CompressionType.None)
+                rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
+
+            int headerSize = ctSig.Length + sizeof(UInt64) + 5;
+            byte[] packetOut = new byte[headerSize + rawData.Length];
+            Span<byte> pkt = new Span<byte>(packetOut);
+
+            // Make header
+            // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureHash(u64)
+            // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
+            // targetNetId(4 bytes)
+            int offset = 0;
+            ctSig.CopyTo(pkt.Slice(offset));
+            offset += ctSig.Length;
+            BinaryPrimitives.WriteUInt64LittleEndian(pkt.Slice(offset), PacketSignature);
+            offset += sizeof(UInt64);
+            pkt[offset++] = (byte)((((int)compressionType << 4) & 0xf0) + ((int)packetType & 0x0f));
+            BinaryPrimitives.WriteUInt32LittleEndian(pkt.Slice(offset), targetNetId);
+            offset += sizeof(uint);
+
+            rawData.CopyTo(pkt.Slice(offset));
+        }
     }
 
     // Reading packet in
-    internal P2PPacketWrapper(byte[] rawPacketData) {
+    internal P2PPacketWrapper(Span<byte> rawPacketData) {
         //CodeTalkerPlugin.Log.LogDebug($"raw packet data hex: {BitConverter.ToString(rawPacketData).Replace("-", "")}");
-        int sigSize = rawPacketData[0];
-        PacketSignature = Encoding.UTF8.GetString(rawPacketData, 1, sigSize);
-        int offset = sigSize + 1;
+        PacketSignature = BinaryPrimitives.ReadUInt64LittleEndian(rawPacketData);
+        PacketType = (P2PPacketType)(rawPacketData[8] & 0x0f);
+        compression = (CompressionType)((rawPacketData[8] >> 4) & 0x0f);
 
-        PacketType = (P2PPacketType)(rawPacketData[offset] & 0x0f);
-        compression = (CompressionType)((rawPacketData[offset] >> 4) & 0x0f);
-        offset += 1;
-
-        TargetNetId = BitConverter.ToUInt32(rawPacketData, offset);
-        offset += 4;
-        PacketBytes = rawPacketData[offset..];
+        TargetNetId = BinaryPrimitives.ReadUInt32LittleEndian(rawPacketData.Slice(9, 4));
+        PacketBytes = rawPacketData.Slice(13).ToArray();
 
         if (compression != CompressionType.None)
             PacketBytes = Decompress(PacketBytes, compression);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using BepInEx.Bootstrap;
@@ -10,7 +11,9 @@ using CodeTalker.Packets;
 using Mirror;
 using Newtonsoft.Json;
 using Steamworks;
+using ZstdSharp.Unsafe;
 using static CodeTalker.Compressors;
+using u64 = System.UInt64;
 
 namespace CodeTalker.Networking;
 
@@ -35,26 +38,48 @@ public static class CodeTalkerNetwork {
     /// <summary>
     /// This should only be modified for BREAKING changes in packet structure
     /// </summary>
-    private const ushort NETWORK_PACKET_VERSION = 3;
+    private const ushort NETWORK_PACKET_VERSION = 4;
 
-    internal static string CODE_TALKER_SIGNATURE = $"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!";
-    internal static string CODE_TALKER_BINARY_SIGNATURE = $"!CTN:BIN{NETWORK_PACKET_VERSION}!";
-    internal static string CODE_TALKER_P2P_SIGNATURE = $"!CTN:P2P{NETWORK_PACKET_VERSION}!";
-    private static readonly Dictionary<string, PacketListener> packetListeners = [];
-    private static readonly Dictionary<string, Func<string, PacketBase>> packetDeserializers = [];
+    internal static byte[] CODE_TALKER_SIGNATURE = Encoding.UTF8.GetBytes($"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!");
+    internal static byte[] CODE_TALKER_BINARY_SIGNATURE = Encoding.UTF8.GetBytes($"!CTN:BIN{NETWORK_PACKET_VERSION}!");
+    internal static byte[] CODE_TALKER_P2P_SIGNATURE = Encoding.UTF8.GetBytes($"!CTN:P2P{NETWORK_PACKET_VERSION}!");
 
-    static string lastSkippedPacketType = "";
+    private static readonly Dictionary<UInt64, PacketListener> packetListeners = [];
+    private static readonly Dictionary<UInt64, Func<string, PacketBase>> packetDeserializers = [];
+    private static readonly Dictionary<UInt64, string> packetTypeNames = [];
+
+    static u64 lastSkippedPacketSig = 0;
 
     struct BinaryListenerEntry {
         public BinaryPacketListener Listener;
         public Type PacketType;
     }
-    private static readonly Dictionary<string, BinaryListenerEntry> binaryListeners = [];
+    private static readonly Dictionary<UInt64, BinaryListenerEntry> binaryListeners = [];
 
     internal static string GetTypeNameString(Type type) =>
       $"{type.Assembly.GetName().Name},{type.DeclaringType?.Name ?? "NONE"}:{type.Namespace ?? "NONE"}.{type.Name}";
 
     internal static bool dbg = false;
+
+    internal static bool signatureCheck(Span<byte> data, Span<byte> sig) {
+        if (data.Length < sig.Length)
+            return false;
+
+        return data.Slice(0, sig.Length).SequenceEqual(sig);
+    }
+
+    internal static u64 signatureHash(Span<byte> signature) {
+        // FNV-1a 64-bit hash (https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1a_hash)
+        u64 hash = 0xcbf29ce484222325; // FNV offset basis
+        const u64 fnvPrime = 0x00000100000001b3;
+
+        foreach (byte b in signature) {
+            hash ^= b;
+            hash *= fnvPrime;
+        }
+
+        return hash;
+    }
 
     /// <summary>
     /// Registers a listenerEntry by packet type. Code Talker will call
@@ -70,13 +95,15 @@ public static class CodeTalkerNetwork {
     public static bool RegisterListener<T>(PacketListener listener) where T : PacketBase {
         var inType = typeof(T);
         string typeName = GetTypeNameString(inType);
+        u64 typeHash = signatureHash(Encoding.UTF8.GetBytes(typeName));
 
-        if (packetListeners.ContainsKey(typeName)) {
+        if (packetListeners.ContainsKey(typeHash)) {
             return false;
         }
 
-        packetListeners.Add(typeName, listener);
-        packetDeserializers.Add(typeName, (payload) => JsonConvert.DeserializeObject<T>(payload, PacketSerializer.JSONOptions)!);
+        packetTypeNames.Add(typeHash, typeName);
+        packetListeners.Add(typeHash, listener);
+        packetDeserializers.Add(typeHash, (payload) => JsonConvert.DeserializeObject<T>(payload, PacketSerializer.JSONOptions)!);
 
         return true;
     }
@@ -97,19 +124,17 @@ public static class CodeTalkerNetwork {
 
         var type = typeof(T);
         BinaryPacketBase instance = new T();
-        string signature = instance.PacketSignature;
-
-        if (binaryListeners.ContainsKey(signature))
-            return false;
-
-        int headerLen = Encoding.UTF8.GetBytes(signature).Length;
-
-        if (signature.Length == 0 || signature.Length > 255) {
-            CodeTalkerPlugin.Log.LogError($"Failed to register binary Listener for type {type.FullName}, PacketSignature can't be {(signature.Length > 255 ? "longer than 255 bytes" : "empty")}!");
+        if (instance.PacketSignature == string.Empty) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register binary Listener for type {type.FullName}, PacketSignature can't be empty!");
             return false;
         }
 
-        binaryListeners.Add(signature, new BinaryListenerEntry { Listener = listener, PacketType = type });
+        u64 sigHash = signatureHash(Encoding.UTF8.GetBytes(instance.PacketSignature));
+        if (binaryListeners.ContainsKey(sigHash))
+            return false;
+
+        packetTypeNames.Add(sigHash, instance.PacketSignature);
+        binaryListeners.Add(sigHash, new BinaryListenerEntry { Listener = listener, PacketType = type });
         return true;
     }
 
@@ -165,7 +190,7 @@ public static class CodeTalkerNetwork {
         SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.FullPacketBytes, wrapper.FullPacketBytes.Length);
     }
 
-#region SteamNetworkingMessages
+    #region SteamNetworkingMessages
     /// <summary>
     /// Sends a binary packet to a specific player on the Code Talker network (P2P)
     /// </summary>
@@ -235,7 +260,7 @@ public static class CodeTalkerNetwork {
         } catch { }
         packetBytesHandle.Free();
     }
-#endregion SteamNetworkingMessages
+    #endregion SteamNetworkingMessages
 
 
     internal static void OnNetworkMessage(LobbyChatMsg_t message) {
@@ -246,8 +271,16 @@ public static class CodeTalkerNetwork {
         byte[] rawData = new byte[bufferSize];
 
         var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
+        Span<byte> b = new Span<byte>(rawData);
 
-        HandleNetworkMessage(senderID, rawData[..ret]);
+        var test = Encoding.UTF8.GetString(b.Slice(0, ret));
+
+        if (signatureCheck(rawData, CODE_TALKER_SIGNATURE))
+            HandleJSONMessage(senderID, b.Slice(CODE_TALKER_SIGNATURE.Length, ret - CODE_TALKER_SIGNATURE.Length));
+        else if (signatureCheck(rawData, CODE_TALKER_BINARY_SIGNATURE))
+            HandleBinaryMessage(senderID, b.Slice(CODE_TALKER_BINARY_SIGNATURE.Length, ret - CODE_TALKER_BINARY_SIGNATURE.Length));
+        else if (signatureCheck(rawData, CODE_TALKER_P2P_SIGNATURE))
+            HandleP2PMessage(senderID, b.Slice(CODE_TALKER_P2P_SIGNATURE.Length, ret - CODE_TALKER_P2P_SIGNATURE.Length));
     }
 
     internal static void OnSteamSessionRequest(SteamNetworkingMessagesSessionRequest_t request) {
@@ -257,65 +290,201 @@ public static class CodeTalkerNetwork {
     }
 
     // Quick function to sanitize control characters from binary strings for logging
-    internal static string BinaryToUtf8String(byte[] data) {
+    internal static string BinaryToUtf8String(Span<byte> data) {
         return new string(Encoding.UTF8.GetString(data).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray());
     }
 
-    internal static string BinaryToHexString(byte[] data) {
-        return BitConverter.ToString(data).Replace("-", "");
+    internal static string BinaryToHexString(Span<byte> data) {
+        return BitConverter.ToString(data.ToArray()).Replace("-", "");
     }
 
-    internal static void HandleNetworkMessage(CSteamID senderID, byte[] rawData) {
-        PacketWrapper wrapper;
-        PacketBase packet;
-        Type inType;
+#region Message Handling
+    static object packet;
+    static Type type;
 
+    internal static void ExecuteHandler(Delegate listener, CSteamID senderID, object packetObj) {
+        try {
+            listener.DynamicInvoke(new PacketHeader(senderID.m_SteamID), packetObj);
+        } catch (Exception ex) {
+            var plugins = Chainloader.PluginInfos;
+            var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == type.Assembly).FirstOrDefault();
+
+            //Happy lil ternary
+            string modName = mod != null
+              ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
+              : type.Assembly.GetName().Name;
+
+            //Big beefin' raw string literal with interpolation
+            CodeTalkerPlugin.Log.LogError($"""
+The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
+Mod: {modName}
+StackTrace:
+{ex}
+""");
+        }
+    }
+
+    static PacketWrapper? wrapper;
+    internal static void HandleJSONMessage(CSteamID senderID, Span<byte> rawData) {
         //We do it this way to make sure we're not blamed for errors
         //that other networked mods may cause
 
-        string data = Encoding.UTF8.GetString(rawData);
-        if (!data.StartsWith(CODE_TALKER_SIGNATURE) &&
-                !data.StartsWith(CODE_TALKER_BINARY_SIGNATURE) &&
-                !data.StartsWith(CODE_TALKER_P2P_SIGNATURE))
-            return;
+        string data = string.Empty;
+        try {
+            data = Encoding.UTF8.GetString(rawData);
+            if (JsonConvert.DeserializeObject<PacketWrapper>(data, PacketSerializer.JSONOptions) is PacketWrapper inWrapper)
+                wrapper = inWrapper;
+            else
+                throw new InvalidOperationException("Failed to deserialize a valid packet wrapper");
+        } catch (Exception ex) {
+            string aData;
 
-        if (data.StartsWith(CODE_TALKER_SIGNATURE)) {
-            data = data.Replace(CODE_TALKER_SIGNATURE, string.Empty);
+            if (data.Length < 24)
+                aData = data;
+            else
+                aData = data[..24];
 
-            try {
-                if (JsonConvert.DeserializeObject<PacketWrapper>(data, PacketSerializer.JSONOptions) is PacketWrapper inWrapper)
-                    wrapper = inWrapper;
-                else
-                    throw new InvalidOperationException("Failed to deserialize a valid packet wrapper");
-            } catch (Exception ex) {
-                string aData;
-
-                if (data.Length < 24)
-                    aData = data;
-                else
-                    aData = data[..24];
-
-                CodeTalkerPlugin.Log.LogError($"""
+            CodeTalkerPlugin.Log.LogError($"""
 Error while receiving a packet!
 Exception: {ex.GetType().Name}
 Packet:
 {aData}
 """);
+            return;
+        }
+
+        u64 typeHash = signatureHash(Encoding.UTF8.GetBytes(wrapper.PacketType));
+
+        if (!packetListeners.TryGetValue(typeHash, out var listener)) {
+            if (dbg && typeHash != lastSkippedPacketSig) {
+                CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {wrapper.PacketType} because this client does not have it installed, this is safe!");
+                lastSkippedPacketSig = typeHash;
+            }
+            return;
+        }
+
+        try {
+            if (packetDeserializers[typeHash](wrapper.PacketPayload) is PacketBase inPacket) {
+                type = inPacket.GetType();
+                packet = inPacket;
+            } else
+                return;
+        } catch (Exception ex) {
+            CodeTalkerPlugin.Log.LogError($"""
+Error while unwrapping a packet!
+Exception: {ex.GetType().Name}
+Expected Type: {wrapper.PacketType}
+""");
+            return;
+        }
+
+        if (dbg) {
+            CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from GetLobbyChat. Sender {senderID}");
+            CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
+            CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {wrapper.PacketType}");
+        }
+
+        ExecuteHandler(listener, senderID, packet);
+    }
+
+    static BinaryPacketWrapper? binWrapper;
+    internal static void HandleBinaryMessage(CSteamID senderID, Span<byte> rawData) {
+        try {
+            binWrapper = new BinaryPacketWrapper(rawData);
+        } catch (Exception ex) {
+            CodeTalkerPlugin.Log.LogError($"Failed to create binary packet wrapper for valid packet!\nStackTrace: {ex}");
+            return;
+        }
+
+        if (!binaryListeners.TryGetValue(binWrapper.PacketSignature, out var listenerEntry)) {
+            if (dbg && (binWrapper.PacketSignature != lastSkippedPacketSig)) {
+                CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of signature: {binWrapper.PacketSignature} because this client does not have it installed, this is safe!");
+                lastSkippedPacketSig = binWrapper.PacketSignature;
+            }
+            return;
+        }
+
+        if (dbg) {
+            CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
+        }
+
+        BinaryPacketBase bPacket;
+        try {
+            type = listenerEntry.PacketType;
+            object instance = Activator.CreateInstance(type);
+            if (instance is BinaryPacketBase i) {
+                bPacket = i;
+                try {
+                    bPacket.Deserialize(binWrapper.FullPacketBytes);
+                } catch (Exception ex) {
+                    CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
+                    CodeTalkerPlugin.Log.LogError($"Packet signature: {packetTypeNames[binWrapper.PacketSignature]}");
+                    CodeTalkerPlugin.Log.LogError($"Message hex: {BinaryToHexString(rawData)}");
+                    return;
+                }
+            } else {
+                throw new InvalidOperationException($"Failed to create instance of binary packet type: {packetTypeNames[binWrapper.PacketSignature]}");
+            }
+        } catch (Exception ex) {
+            CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
+            CodeTalkerPlugin.Log.LogError($"Message hex: {BinaryToHexString(rawData)}");
+            return;
+        }
+
+        if (dbg) {
+            CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from GetLobbyChat. Sender {senderID}");
+            CodeTalkerPlugin.Log.LogDebug($"Message hex: {BinaryToHexString(rawData)}");
+            CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary handler \"{packetTypeNames[binWrapper.PacketSignature]}\"");
+        }
+
+        ExecuteHandler(listenerEntry.Listener, senderID, bPacket);
+    }
+
+    static P2PPacketWrapper? p2pWrapper;
+    internal static void HandleP2PMessage(CSteamID senderID, Span<byte> rawData) {
+        try {
+            p2pWrapper = new P2PPacketWrapper(rawData);
+        } catch (Exception ex) {
+            CodeTalkerPlugin.Log.LogError($"Failed to create P2P packet wrapper for valid packet!\nStackTrace: {ex}");
+            return;
+        }
+
+        if (dbg)
+            CodeTalkerPlugin.Log.LogDebug($"Got P2P packet! {p2pWrapper}");
+
+        void printWrapperInfo(Span<byte> rawData, P2PPacketWrapper wrapper, LogLevel level = LogLevel.Debug) {
+            CodeTalkerPlugin.Log.Log(level, $"Heard {rawData.Length} from steam network. Sender: {senderID} Wrapper: {wrapper}");
+            CodeTalkerPlugin.Log.Log(level, $"Message hex: {BinaryToHexString(rawData)}");
+            if(wrapper.compression != CompressionType.None)
+                CodeTalkerPlugin.Log.Log(level, $"Packet hex (decompressed): {BinaryToHexString(wrapper.PacketBytes)}");
+        }
+
+        if (p2pWrapper.TargetNetId > 0) {
+            // Targeted P2P packet
+            if (Player._mainPlayer == null || Player._mainPlayer.netId != p2pWrapper.TargetNetId) {
+                if (dbg)
+                    CodeTalkerPlugin.Log.LogDebug($"P2P netId doesn't match this client! Targeted netId: {p2pWrapper.TargetNetId}");
                 return;
             }
+        }
 
+        if (p2pWrapper.PacketType == P2PPacketType.JSON) {
+            // JSON P2P packet
+            if (dbg) {
+                CodeTalkerPlugin.Log.LogDebug($"Recieved P2P JSON packet!");
+            }
 
-            if (!packetListeners.TryGetValue(wrapper.PacketType, out var listener)) {
-                if (dbg && wrapper.PacketType != lastSkippedPacketType) {
-                    CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {wrapper.PacketType} because this client does not have it installed, this is safe!");
-                    lastSkippedPacketType = wrapper.PacketType;
+            if (!packetListeners.TryGetValue(p2pWrapper.PacketSignature, out var listener)) {
+                if (dbg && p2pWrapper.PacketSignature != lastSkippedPacketSig) {
+                    CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {p2pWrapper.PacketSignature} because this client does not have it installed, this is safe!");
+                    lastSkippedPacketSig = p2pWrapper.PacketSignature;
                 }
                 return;
             }
 
             try {
-                if (packetDeserializers[wrapper.PacketType](wrapper.PacketPayload) is PacketBase inPacket) {
-                    inType = inPacket.GetType();
+                if (packetDeserializers[p2pWrapper.PacketSignature](Encoding.UTF8.GetString(p2pWrapper.PacketBytes)) is PacketBase inPacket) {
+                    type = inPacket.GetType();
                     packet = inPacket;
                 } else
                     return;
@@ -323,73 +492,42 @@ Packet:
                 CodeTalkerPlugin.Log.LogError($"""
 Error while unwrapping a packet!
 Exception: {ex.GetType().Name}
-Expected Type: {wrapper.PacketType}
+Expected Type: {packetTypeNames[p2pWrapper.PacketSignature]}
 """);
                 return;
             }
 
             if (dbg) {
-                CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from GetLobbyChat. Sender {senderID}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message: {data}");
-                CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {wrapper.PacketType}");
+                printWrapperInfo(rawData, p2pWrapper);
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {packetTypeNames[p2pWrapper.PacketSignature]}");
             }
 
-            try {
-                listener.Invoke(new(senderID.m_SteamID), packet);
-            } catch (Exception ex) {
-                var plugins = Chainloader.PluginInfos;
-                var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
-
-                //Happy lil ternary
-                string modName = mod != null
-                  ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
-                  : inType.Assembly.GetName().Name;
-
-                //Big beefin' raw string literal with interpolation
-                CodeTalkerPlugin.Log.LogError($"""
-The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
-Mod: {modName}
-StackTrace:
-{ex}
-""");
-            }
+            ExecuteHandler(listener, senderID, packet);
         }
 
-        if (data.StartsWith(CODE_TALKER_BINARY_SIGNATURE)) {
-            data = data.Replace(CODE_TALKER_BINARY_SIGNATURE, string.Empty);
+        if (p2pWrapper.PacketType == P2PPacketType.Binary) {
 
-            BinaryPacketWrapper binWrapper;
-            try {
-                binWrapper = new BinaryPacketWrapper(rawData[(CODE_TALKER_BINARY_SIGNATURE.Length)..]);
-            } catch (Exception ex) {
-                CodeTalkerPlugin.Log.LogError($"Failed to create binary packet wrapper for valid packet!\nStackTrace: {ex}");
-                return;
-            }
-
-            if (!binaryListeners.TryGetValue(binWrapper.PacketSignature, out var listenerEntry)) {
-                if (dbg && (binWrapper.PacketSignature != lastSkippedPacketType)) {
-                    CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of signature: {binWrapper.PacketSignature} because this client does not have it installed, this is safe!");
-                    lastSkippedPacketType = binWrapper.PacketSignature;
+            if (!binaryListeners.TryGetValue(p2pWrapper.PacketSignature, out var listenerEntry)) {
+                if (dbg && (p2pWrapper.PacketSignature != lastSkippedPacketSig)) {
+                    CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of unknown signature hash: 0x{p2pWrapper.PacketSignature.ToString("x2")} because this client does not have it installed, this is safe!");
+                    lastSkippedPacketSig = p2pWrapper.PacketSignature;
+                    return;
                 }
-                return;
             }
 
-            if (dbg) {
-                CodeTalkerPlugin.Log.LogDebug($"Recieved binary packet!");
-            }
+            if (dbg)
+                CodeTalkerPlugin.Log.LogDebug($"Recieved P2P binary packet!");
 
-            BinaryPacketBase bPacket;
             try {
-                inType = listenerEntry.PacketType;
-                object instance = Activator.CreateInstance(inType);
-                if (instance is BinaryPacketBase) {
-                    bPacket = (BinaryPacketBase)instance;
+                type = listenerEntry.PacketType;
+                object instance = Activator.CreateInstance(type);
+                if (instance is BinaryPacketBase bPacket) {
+                    packet = instance;
                     try {
-                        bPacket.Deserialize(binWrapper.FullPacketBytes);
+                        bPacket.Deserialize(p2pWrapper.PacketBytes);
                     } catch (Exception ex) {
                         CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
-                        CodeTalkerPlugin.Log.LogError($"Full message: {BinaryToUtf8String(rawData)}");
-                        CodeTalkerPlugin.Log.LogError($"Full message hex: {BinaryToHexString(rawData)}");
+                        printWrapperInfo(rawData, p2pWrapper, LogLevel.Error);
                         return;
                     }
                 } else {
@@ -397,191 +535,17 @@ StackTrace:
                 }
             } catch (Exception ex) {
                 CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
-                CodeTalkerPlugin.Log.LogError($"Full message: {BinaryToUtf8String(rawData)}");
-                CodeTalkerPlugin.Log.LogError($"Full message hex: {BinaryToHexString(rawData)}");
+                printWrapperInfo(rawData, p2pWrapper, LogLevel.Error);
                 return;
             }
 
             if (dbg) {
-                CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from GetLobbyChat. Sender {senderID}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message: {BinaryToUtf8String(rawData)}");
-                CodeTalkerPlugin.Log.LogDebug($"Full message hex: {BinaryToHexString(rawData)}");
-                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{binWrapper.PacketSignature}\"");
+                printWrapperInfo(rawData, p2pWrapper);
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{packetTypeNames[p2pWrapper.PacketSignature]}\"");
             }
 
-            try {
-                listenerEntry.Listener.Invoke(new(senderID.m_SteamID), bPacket);
-            } catch (Exception ex) {
-                var plugins = Chainloader.PluginInfos;
-                inType = listenerEntry.GetType();
-                var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
-
-                //Happy lil ternary
-                string modName = mod != null
-                  ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
-                  : inType.Assembly.GetName().Name;
-
-                //Big beefin' raw string literal with interpolation
-                CodeTalkerPlugin.Log.LogError($"""
-The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
-Mod: {modName}
-StackTrace:
-{ex}
-""");
-            }
-        }
-
-        if (data.StartsWith(CODE_TALKER_P2P_SIGNATURE)) {
-            data = data.Replace(CODE_TALKER_P2P_SIGNATURE, string.Empty);
-            // TODO: Reduce code duplication at some point, this could be used for all packets at some point
-
-            void printWrapperInfo(P2PPacketWrapper wrapper, LogLevel level = LogLevel.Debug) {
-                CodeTalkerPlugin.Log.Log(level, $"Heard {rawData.Length} from steam network. Sender: {senderID} Wrapper: {wrapper}");
-                CodeTalkerPlugin.Log.Log(level, $"Full message: {BinaryToUtf8String(rawData)}");
-                CodeTalkerPlugin.Log.Log(level, $"Full message hex: {BinaryToHexString(rawData)}");
-                CodeTalkerPlugin.Log.Log(level, $"Packet hex (decompressed): {BinaryToHexString(wrapper.PacketBytes)}");
-            }
-
-            P2PPacketWrapper p2pWrapper;
-            try {
-                p2pWrapper = new P2PPacketWrapper(rawData[(CODE_TALKER_P2P_SIGNATURE.Length)..]);
-            } catch (Exception ex) {
-                CodeTalkerPlugin.Log.LogError($"Failed to create P2P packet wrapper for valid packet!\nStackTrace: {ex}");
-                return;
-            }
-
-            if (p2pWrapper.TargetNetId > 0) {
-                // Targeted P2P packet
-                if (Player._mainPlayer == null || Player._mainPlayer.netId != p2pWrapper.TargetNetId) {
-                    if (dbg)
-                        CodeTalkerPlugin.Log.LogDebug($"P2P netId doesn't match this client! Targeted netId: {p2pWrapper.TargetNetId}");
-                    return;
-                }
-            }
-
-            if (dbg)
-                CodeTalkerPlugin.Log.LogDebug($"Got P2P packet! Type: {p2pWrapper.PacketType} TargetNetID: {p2pWrapper.TargetNetId}");
-
-            if (p2pWrapper.PacketType == P2PPacketType.JSON) {
-                // JSON P2P packet
-                if (dbg) {
-                    CodeTalkerPlugin.Log.LogDebug($"Recieved P2P JSON packet!");
-                }
-
-                if (!packetListeners.TryGetValue(p2pWrapper.PacketSignature, out var listener)) {
-                    if (dbg && p2pWrapper.PacketSignature != lastSkippedPacketType) {
-                        CodeTalkerPlugin.Log.LogDebug($"Skipping packet of type: {p2pWrapper.PacketSignature} because this client does not have it installed, this is safe!");
-                        lastSkippedPacketType = p2pWrapper.PacketSignature;
-                    }
-                    return;
-                }
-
-                try {
-                    if (packetDeserializers[p2pWrapper.PacketSignature](Encoding.UTF8.GetString(p2pWrapper.PacketBytes)) is PacketBase inPacket) {
-                        inType = inPacket.GetType();
-                        packet = inPacket;
-                    } else
-                        return;
-                } catch (Exception ex) {
-                    CodeTalkerPlugin.Log.LogError($"""
-Error while unwrapping a packet!
-Exception: {ex.GetType().Name}
-Expected Type: {p2pWrapper.PacketSignature}
-""");
-                    return;
-                }
-
-                if (dbg) {
-                    printWrapperInfo(p2pWrapper);
-                    CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {p2pWrapper.PacketSignature}");
-                }
-
-                try {
-                    listener.Invoke(new(senderID.m_SteamID), packet);
-                } catch (Exception ex) {
-                    var plugins = Chainloader.PluginInfos;
-                    var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
-
-                    //Happy lil ternary
-                    string modName = mod != null
-                      ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
-                      : inType.Assembly.GetName().Name;
-
-                    //Big beefin' raw string literal with interpolation
-                    CodeTalkerPlugin.Log.LogError($"""
-The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
-Mod: {modName}
-StackTrace:
-{ex}
-""");
-                }
-            }
-
-            if (p2pWrapper.PacketType == P2PPacketType.Binary) {
-                data = data.Replace(CODE_TALKER_BINARY_SIGNATURE, string.Empty);
-
-                // dont need binary wrapper we already parsed everything
-
-                if (!binaryListeners.TryGetValue(p2pWrapper.PacketSignature, out var listenerEntry)) {
-                    if (dbg && (p2pWrapper.PacketSignature != lastSkippedPacketType)) {
-                        CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of signature: {p2pWrapper.PacketSignature} because this client does not have it installed, this is safe!");
-                        lastSkippedPacketType = p2pWrapper.PacketSignature;
-                    }
-                    return;
-                }
-
-                if (dbg) {
-                    CodeTalkerPlugin.Log.LogDebug($"Recieved P2P binary packet!");
-                }
-
-                BinaryPacketBase bPacket;
-                try {
-                    inType = listenerEntry.PacketType;
-                    object instance = Activator.CreateInstance(inType);
-                    if (instance is BinaryPacketBase pkt) {
-                        bPacket = pkt;
-                        try {
-                            bPacket.Deserialize(p2pWrapper.PacketBytes);
-                        } catch (Exception ex) {
-                            CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
-                            printWrapperInfo(p2pWrapper, LogLevel.Error);
-                            return;
-                        }
-                    } else {
-                        throw new InvalidOperationException("Failed to create instance of binary packet type!");
-                    }
-                } catch (Exception ex) {
-                    CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
-                    printWrapperInfo(p2pWrapper, LogLevel.Error);
-                    return;
-                }
-
-                if (dbg) {
-                    printWrapperInfo(p2pWrapper);
-                    CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{p2pWrapper.PacketSignature}\"");
-                }
-
-                try {
-                    listenerEntry.Listener.Invoke(new(senderID.m_SteamID), bPacket);
-                } catch (Exception ex) {
-                    var plugins = Chainloader.PluginInfos;
-                    inType = listenerEntry.GetType();
-                    var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == inType.Assembly).FirstOrDefault();
-
-                    //Happy lil ternary
-                    string modName = mod != null
-                      ? $"{mod.Metadata.Name} version {mod.Metadata.Version}"
-                      : inType.Assembly.GetName().Name;
-
-                    //Big beefin' raw string literal with interpolation
-                    CodeTalkerPlugin.Log.LogError($"""
-The following mod encountered an error while responding to a network packet, please do not report this as a CodeTalker error!
-Mod: {modName}
-StackTrace:
-{ex}
-""");
-                }
-            }
+            ExecuteHandler(listenerEntry.Listener, senderID, packet);
         }
     }
 }
+#endregion Message Handling

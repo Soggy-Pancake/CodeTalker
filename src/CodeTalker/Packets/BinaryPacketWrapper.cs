@@ -1,36 +1,35 @@
 ﻿using System;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
 using System.Text;
 using CodeTalker.Networking;
+using static CodeTalker.Networking.CodeTalkerNetwork;
 
 internal class BinaryPacketWrapper {
 	internal readonly byte[] FullPacketBytes;
 
-	internal readonly string PacketSignature;
+	internal readonly UInt64 PacketSignature;
 
-    internal BinaryPacketWrapper(string sig, byte[] rawData) {
+    static SHA256 sha256 = SHA256.Create();
 
-        PacketSignature = sig;
-        string binSig = CodeTalkerNetwork.CODE_TALKER_BINARY_SIGNATURE;
-        byte[] signatureBytes = Encoding.UTF8.GetBytes(sig);
+    internal BinaryPacketWrapper(string sig, Span<byte> rawData) {
+        Span<byte> ctSig = CODE_TALKER_BINARY_SIGNATURE;
+        Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
+        PacketSignature = signatureHash(signatureBytes);
 
-        int headerSize = binSig.Length + 1 + signatureBytes.Length;
+        int headerSize = ctSig.Length + sizeof(UInt64);
+        FullPacketBytes = new byte[headerSize + rawData.Length];
+        Span<byte> pkt = new Span<byte>(FullPacketBytes);
 
         // Make header
-        // Header format: CODE_TALKER_BINARY_SIGNATURE PacketSignatureLength(1 Byte) PacketSignature(PacketSigLen bytes long)
-        byte[] header = new byte[headerSize];
-        Array.Copy(Encoding.ASCII.GetBytes(binSig), header, binSig.Length);
-        header[binSig.Length] = (byte)signatureBytes.Length;
-        Array.Copy(signatureBytes, 0, header, binSig.Length + 1, signatureBytes.Length);
-
-        // Make a new array with the extra space for the signature and memcopy
-        FullPacketBytes = new byte[headerSize + rawData.Length];
-        Array.Copy(header, FullPacketBytes, header.Length);
-        Array.Copy(rawData, 0, FullPacketBytes, headerSize, rawData.Length);
+        // Header format: CODE_TALKER_BINARY_SIGNATURE PacketSignature(u64)
+        ctSig.CopyTo(pkt);
+        BinaryPrimitives.WriteUInt64LittleEndian(pkt.Slice(ctSig.Length), PacketSignature);
+        rawData.CopyTo(pkt.Slice(headerSize));
     }
 
-    internal BinaryPacketWrapper(byte[] rawPacketData) {
-        int sigSize = rawPacketData[0];
-        PacketSignature = Encoding.UTF8.GetString(rawPacketData, 1, sigSize);
-        FullPacketBytes = rawPacketData[(sigSize + 1)..];
+    internal BinaryPacketWrapper(Span<byte> rawPacketData) {
+        PacketSignature = BinaryPrimitives.ReadUInt64LittleEndian(rawPacketData);
+        FullPacketBytes = rawPacketData.Slice(sizeof(UInt64)).ToArray();
     }
 }

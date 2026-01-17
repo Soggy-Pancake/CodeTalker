@@ -7,6 +7,7 @@ using BepInEx.Logging;
 using CodeTalker.Networking;
 using Steamworks;
 using static CodeTalker.Compressors;
+using static CodeTalker.Networking.CodeTalkerNetwork;
 
 namespace CodeTalker;
 
@@ -38,6 +39,9 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
             byte[] data = new byte[64];
             new Random().NextBytes(data);
             foreach (CompressionType algo in Enum.GetValues(typeof(CompressionType))) {
+                if (algo == CompressionType.None)
+                    continue;
+
                 var compressed = Compress(data, algo, CompressionLevel.Fastest);
                 _ = Decompress(compressed, algo, CompressionLevel.Fastest);
             }
@@ -50,31 +54,38 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
             return;
 
         steamIntialized = status.m_eAvail == ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
-        if(EnablePacketDebugging.Value)
+        if (EnablePacketDebugging.Value)
             Logger.LogDebug($"Steam Relay Network status update: {status.m_eAvail}");
-        if(steamIntialized)
+        if (steamIntialized)
             SteamNetworkingUtils.InitRelayNetworkAccess();
     }
 
+    static IntPtr[] messagePtrBuffer = new IntPtr[10]; // buffer of 10 messages ig
     private void Update() {
         // Polling is required to receive messages for SteamNetworkingMessages
         try {
-            IntPtr[] messagePtrBuffer = new IntPtr[10]; // buffer of 10 messages ig
             int messageCount = SteamNetworkingMessages.ReceiveMessagesOnChannel(0, messagePtrBuffer, messagePtrBuffer.Length);
             if (messageCount > 0) {
                 try {
                     for (int i = 0; i < messageCount; i++) {
                         SteamNetworkingMessage_t msg = Marshal.PtrToStructure<SteamNetworkingMessage_t>(messagePtrBuffer[i]);
                         byte[] buffer = new byte[msg.m_cbSize];
-                        if(EnablePacketDebugging.Value)
+                        if (EnablePacketDebugging.Value)
                             Log.LogDebug($"Recieved SNM packet of size {msg.m_cbSize}");
                         try { // just to be safe and make absolutely sure it gets freed
                             Marshal.Copy(msg.m_pData, buffer, 0, (int)msg.m_cbSize);
-                            CodeTalkerNetwork.HandleNetworkMessage(msg.m_identityPeer.GetSteamID(), buffer);
+
+                            Span<byte> b = new Span<byte>(buffer);
+                            if(signatureCheck(buffer, CODE_TALKER_SIGNATURE))
+                                HandleJSONMessage(msg.m_identityPeer.GetSteamID(), b.Slice(CODE_TALKER_SIGNATURE.Length));
+                            else if(signatureCheck(buffer, CODE_TALKER_BINARY_SIGNATURE))
+                                HandleBinaryMessage(msg.m_identityPeer.GetSteamID(), b.Slice(CODE_TALKER_BINARY_SIGNATURE.Length));
+                            else if(signatureCheck(buffer, CODE_TALKER_P2P_SIGNATURE))
+                                HandleP2PMessage(msg.m_identityPeer.GetSteamID(), b.Slice(CODE_TALKER_P2P_SIGNATURE.Length));
                         } catch { }
                         SteamNetworkingMessage_t.Release(messagePtrBuffer[i]);
                     }
-                } catch (Exception e) { 
+                } catch (Exception e) {
                     Logger.LogError("Error handling SteamNetworkingMessages message! " + e);
                 }
             }
