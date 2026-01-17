@@ -46,7 +46,6 @@ public static class CodeTalkerNetwork {
 
     private static readonly Dictionary<UInt64, PacketListener> packetListeners = [];
     private static readonly Dictionary<UInt64, Func<string, PacketBase>> packetDeserializers = [];
-    private static readonly Dictionary<UInt64, string> packetTypeNames = [];
 
     static u64 lastSkippedPacketSig = 0;
 
@@ -101,7 +100,6 @@ public static class CodeTalkerNetwork {
             return false;
         }
 
-        packetTypeNames.Add(typeHash, typeName);
         packetListeners.Add(typeHash, listener);
         packetDeserializers.Add(typeHash, (payload) => JsonConvert.DeserializeObject<T>(payload, PacketSerializer.JSONOptions)!);
 
@@ -133,7 +131,6 @@ public static class CodeTalkerNetwork {
         if (binaryListeners.ContainsKey(sigHash))
             return false;
 
-        packetTypeNames.Add(sigHash, instance.PacketSignature);
         binaryListeners.Add(sigHash, new BinaryListenerEntry { Listener = listener, PacketType = type });
         return true;
     }
@@ -418,12 +415,12 @@ Expected Type: {wrapper.PacketType}
                     bPacket.Deserialize(binWrapper.FullPacketBytes);
                 } catch (Exception ex) {
                     CodeTalkerPlugin.Log.LogError($"Error while deserializing binary packet! THIS IS NOT A CODETALKER ISSUE! DO NOT REPORT THIS TO THE CODETALKER DEV!!\nStackTrace: {ex}");
-                    CodeTalkerPlugin.Log.LogError($"Packet signature: {packetTypeNames[binWrapper.PacketSignature]}");
+                    CodeTalkerPlugin.Log.LogError($"Packet signature: {i.PacketSignature}");
                     CodeTalkerPlugin.Log.LogError($"Message hex: {BinaryToHexString(rawData)}");
                     return;
                 }
             } else {
-                throw new InvalidOperationException($"Failed to create instance of binary packet type: {packetTypeNames[binWrapper.PacketSignature]}");
+                throw new InvalidOperationException($"Failed to create instance of binary packet type: {type}");
             }
         } catch (Exception ex) {
             CodeTalkerPlugin.Log.LogError($"Error while creating binary packet instance! This should be reported to either codetalker or the plugin dev!\nStackTrace: {ex}");
@@ -434,7 +431,7 @@ Expected Type: {wrapper.PacketType}
         if (dbg) {
             CodeTalkerPlugin.Log.LogDebug($"Heard {rawData.Length} from GetLobbyChat. Sender {senderID}");
             CodeTalkerPlugin.Log.LogDebug($"Message hex: {BinaryToHexString(rawData)}");
-            CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary handler \"{packetTypeNames[binWrapper.PacketSignature]}\"");
+            CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary handler \"{bPacket.PacketSignature}\"");
         }
 
         ExecuteHandler(listenerEntry.Listener, senderID, bPacket);
@@ -492,14 +489,14 @@ Expected Type: {wrapper.PacketType}
                 CodeTalkerPlugin.Log.LogError($"""
 Error while unwrapping a packet!
 Exception: {ex.GetType().Name}
-Expected Type: {packetTypeNames[p2pWrapper.PacketSignature]}
+Expected Type: {p2pWrapper.PacketSignature}
 """);
                 return;
             }
 
             if (dbg) {
                 printWrapperInfo(rawData, p2pWrapper);
-                CodeTalkerPlugin.Log.LogDebug($"Sending an event for type {packetTypeNames[p2pWrapper.PacketSignature]}");
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for {((PacketBase)packet).PacketSourceGUID}");
             }
 
             ExecuteHandler(listener, senderID, packet);
@@ -541,7 +538,7 @@ Expected Type: {packetTypeNames[p2pWrapper.PacketSignature]}
 
             if (dbg) {
                 printWrapperInfo(rawData, p2pWrapper);
-                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{packetTypeNames[p2pWrapper.PacketSignature]}\"");
+                CodeTalkerPlugin.Log.LogDebug($"Sending an event for binary signature \"{((BinaryPacketBase)packet).PacketSignature}\"");
             }
 
             ExecuteHandler(listenerEntry.Listener, senderID, packet);
