@@ -1,10 +1,12 @@
 ﻿using System;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using CodeTalker.Networking;
 using Steamworks;
+using static CodeTalker.Compressors;
 
 namespace CodeTalker;
 
@@ -31,6 +33,15 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
         Log.LogMessage("Created steam networking callbacks");
 
         CodeTalkerNetwork.dbg = EnablePacketDebugging.Value;
+
+        { // Preload compression libraries to prevent lag when joining servers
+            byte[] data = new byte[64];
+            new Random().NextBytes(data);
+            foreach (CompressionType algo in Enum.GetValues(typeof(CompressionType))) {
+                var compressed = Compress(data, algo, CompressionLevel.Fastest);
+                _ = Decompress(compressed, algo, CompressionLevel.Fastest);
+            }
+        }
     }
 
     void OnSteamNetworkInitialized(SteamRelayNetworkStatus_t status) {
