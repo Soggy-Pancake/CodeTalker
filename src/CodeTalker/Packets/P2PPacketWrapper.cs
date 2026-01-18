@@ -29,66 +29,31 @@ internal class P2PPacketWrapper {
 
     // For sending packets
     internal P2PPacketWrapper(string sig, Span<byte> rawData, P2PPacketType packetType, CompressionType compressionType, CompressionLevel compressionLevel, uint targetNetId = 0) {
-        /*{ // Old array based implementation
-            PacketType = packetType;
-            TargetNetId = targetNetId;
+        Span<byte> ctSig = CODE_TALKER_P2P_SIGNATURE;
+        Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
+        PacketSignature = signatureHash(signatureBytes);
 
-            byte[] ctSig = CODE_TALKER_P2P_SIGNATURE;
-            byte[] signatureBytes = Encoding.UTF8.GetBytes(sig);
+        if (compressionType != CompressionType.None)
+            rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
 
-            int headerSize = ctSig.Length + 1 + signatureBytes.Length + 5;
+        int headerSize = ctSig.Length + sizeof(UInt64) + 5;
+        byte[] packetOut = new byte[headerSize + rawData.Length];
+        Span<byte> pkt = new Span<byte>(packetOut);
 
-            // Make header
-            // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureLength(1 Byte) PacketSignature(PacketSigLen bytes long)
-            // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
-            // targetNetId(4 bytes)
-            byte[] header = new byte[headerSize];
-            int offset = 0;
-            Array.Copy(ctSig, header, ctSig.Length);
-            offset += ctSig.Length;
-            header[offset++] = (byte)signatureBytes.Length;
-            Array.Copy(signatureBytes, 0, header, offset, signatureBytes.Length);
-            offset += signatureBytes.Length;
+        // Make header
+        // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureHash(u64)
+        // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
+        // targetNetId(4 bytes)
+        int offset = 0;
+        ctSig.CopyTo(pkt.Slice(offset));
+        offset += ctSig.Length;
+        BinaryPrimitives.WriteUInt64LittleEndian(pkt.Slice(offset), PacketSignature);
+        offset += sizeof(UInt64);
+        pkt[offset++] = (byte)((((int)compressionType << 4) & 0xf0) + ((int)packetType & 0x0f));
+        BinaryPrimitives.WriteUInt32LittleEndian(pkt.Slice(offset), targetNetId);
+        offset += sizeof(uint);
 
-            header[offset++] = (byte)((((int)compressionType << 4) & 0xf0) + ((int)packetType & 0x0f));
-            Array.Copy(BitConverter.GetBytes(targetNetId), 0, header, offset, 4);
-
-            if (compressionType != CompressionType.None)
-                rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
-
-            // Make a new array with the extra space for the signature then memcopy
-            PacketBytes = new byte[headerSize + rawData.Length];
-            Span<byte> pkt = new Span<byte>(PacketBytes);
-            Array.Copy(header, PacketBytes, header.Length);
-            Array.Copy(rawData.ToArray(), 0, PacketBytes, headerSize, rawData.Length);
-        }*/
-        { // New Span based implementation
-            Span<byte> ctSig = CODE_TALKER_P2P_SIGNATURE;
-            Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
-            PacketSignature = signatureHash(signatureBytes);
-
-            if (compressionType != CompressionType.None)
-                rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
-
-            int headerSize = ctSig.Length + sizeof(UInt64) + 5;
-            byte[] packetOut = new byte[headerSize + rawData.Length];
-            Span<byte> pkt = new Span<byte>(packetOut);
-
-            // Make header
-            // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureHash(u64)
-            // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
-            // targetNetId(4 bytes)
-            int offset = 0;
-            ctSig.CopyTo(pkt.Slice(offset));
-            offset += ctSig.Length;
-            BinaryPrimitives.WriteUInt64LittleEndian(pkt.Slice(offset), PacketSignature);
-            offset += sizeof(UInt64);
-            pkt[offset++] = (byte)((((int)compressionType << 4) & 0xf0) + ((int)packetType & 0x0f));
-            BinaryPrimitives.WriteUInt32LittleEndian(pkt.Slice(offset), targetNetId);
-            offset += sizeof(uint);
-
-            rawData.CopyTo(pkt.Slice(offset));
-        }
+        rawData.CopyTo(pkt.Slice(offset));
     }
 
     // Reading packet in
