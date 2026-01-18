@@ -39,10 +39,7 @@ public static class CodeTalkerNetwork {
     /// This should only be modified for BREAKING changes in packet structure
     /// </summary>
     private const ushort NETWORK_PACKET_VERSION = 4;
-
-    internal static byte[] CODE_TALKER_SIGNATURE = Encoding.UTF8.GetBytes($"!!CODE_TALKER_NETWORKING:PV{NETWORK_PACKET_VERSION}!!");
-    internal static byte[] CODE_TALKER_BINARY_SIGNATURE = Encoding.UTF8.GetBytes($"!CTN:BIN{NETWORK_PACKET_VERSION}!");
-    internal static byte[] CODE_TALKER_P2P_SIGNATURE = Encoding.UTF8.GetBytes($"!CTN:P2P{NETWORK_PACKET_VERSION}!");
+    internal static byte[] CODE_TALKER_SIGNATURE = Encoding.UTF8.GetBytes($"!CTN:PV{NETWORK_PACKET_VERSION}!");
 
     private static readonly Dictionary<UInt64, PacketListener> packetListeners = [];
     private static readonly Dictionary<UInt64, Func<string, PacketBase>> packetDeserializers = [];
@@ -312,8 +309,8 @@ public static class CodeTalkerNetwork {
         var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
         Span<byte> b = new Span<byte>(rawData);
 
-        if (signatureCheck(rawData, CODE_TALKER_P2P_SIGNATURE))
-            HandleNetworkMessage(senderID, b.Slice(CODE_TALKER_P2P_SIGNATURE.Length, ret - CODE_TALKER_P2P_SIGNATURE.Length));
+        if (signatureCheck(rawData, CODE_TALKER_SIGNATURE))
+            HandleNetworkMessage(senderID, b.Slice(CODE_TALKER_SIGNATURE.Length, ret - CODE_TALKER_SIGNATURE.Length));
     }
 
     internal static void OnSteamSessionRequest(SteamNetworkingMessagesSessionRequest_t request) {

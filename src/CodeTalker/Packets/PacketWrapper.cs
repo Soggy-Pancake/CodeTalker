@@ -29,7 +29,7 @@ internal class PacketWrapper {
 
     // For sending packets
     internal PacketWrapper(string sig, Span<byte> rawData, PacketType packetType, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest, uint targetNetId = 0) {
-        Span<byte> ctSig = CODE_TALKER_P2P_SIGNATURE;
+        Span<byte> ctSig = CODE_TALKER_SIGNATURE;
         Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
         PacketSignature = signatureHash(signatureBytes);
 
@@ -41,7 +41,7 @@ internal class PacketWrapper {
         Span<byte> pkt = new Span<byte>(PacketBytes);
 
         // Make header
-        // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureHash(u64)
+        // Header format: CODE_TALKER_SIGNATURE PacketSignatureHash(u64)
         // [packetCompression(high nibble) packetType(low nibble)] (1 byte)
         // targetNetId(4 bytes)
         int offset = 0;

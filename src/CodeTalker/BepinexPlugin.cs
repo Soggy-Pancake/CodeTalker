@@ -79,10 +79,10 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
                             Marshal.Copy(msg.m_pData, buffer, 0, (int)msg.m_cbSize);
 
                             Span<byte> b = new Span<byte>(buffer);
-                            if(signatureCheck(buffer, CODE_TALKER_P2P_SIGNATURE)){
+                            if(signatureCheck(buffer, CODE_TALKER_SIGNATURE)){
                                 if (devMode.Value)
                                     Log.LogDebug($"Got P2P message! {BinaryToHexString(buffer)}");
-                                HandleNetworkMessage(msg.m_identityPeer.GetSteamID(), b.Slice(CODE_TALKER_P2P_SIGNATURE.Length));
+                                HandleNetworkMessage(msg.m_identityPeer.GetSteamID(), b.Slice(CODE_TALKER_SIGNATURE.Length));
                             }
                         } catch { }
                         SteamNetworkingMessage_t.Release(messagePtrBuffer[i]);
