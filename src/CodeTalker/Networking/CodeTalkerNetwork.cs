@@ -147,7 +147,7 @@ public static class CodeTalkerNetwork {
     /// <param name="packet">The packet to send, must be derived from PacketBase</param>
     public static void SendNetworkPacket(PacketBase packet) {
         string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
-        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), P2PPacketType.JSON);
+        PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), PacketType.JSON);
 
         var rawWrapper = $"{CODE_TALKER_SIGNATURE}{JsonConvert.SerializeObject(wrapper, PacketSerializer.JSONOptions)}";
         var bytes = Encoding.UTF8.GetBytes(rawWrapper);
@@ -166,7 +166,7 @@ public static class CodeTalkerNetwork {
     /// <param name="packet"></param>
     public static void SendNetworkPacket(BinaryPacketBase packet) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary);
+        PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary);
 
         if (wrapper.PacketBytes.Length > 4096) {
             CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
@@ -183,7 +183,7 @@ public static class CodeTalkerNetwork {
     /// <param name="packet">The packet to send, must be derived from PacketBase</param>
     public static void SendNetworkPacket(PacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
-        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), P2PPacketType.JSON, compressionType, compressionLevel);
+        PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), PacketType.JSON, compressionType, compressionLevel);
 
         if (wrapper.PacketBytes.Length > 4096) {
             CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
@@ -199,7 +199,7 @@ public static class CodeTalkerNetwork {
     /// <param name="packet"></param>
     public static void SendNetworkPacket(BinaryPacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, compressionType, compressionLevel);
+        PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary, compressionType, compressionLevel);
 
         if (wrapper.PacketBytes.Length > 4096) {
             CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
@@ -216,7 +216,7 @@ public static class CodeTalkerNetwork {
     [Obsolete("Use SendNetworkPacket(BinaryPacketBase) instead")]
     public static void SendBinaryNetworkPacket(BinaryPacketBase packet) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary);
+        PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary);
 
         if (wrapper.PacketBytes.Length > 4096) {
             CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
@@ -236,7 +236,7 @@ public static class CodeTalkerNetwork {
     /// <param name="compressionLevel">Level of compresison that will be applied</param>
     public static void SendNetworkPacket(Player player, BinaryPacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, compressionType, compressionLevel, player.netId);
+        PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary, compressionType, compressionLevel, player.netId);
         SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
     }
 
@@ -249,7 +249,7 @@ public static class CodeTalkerNetwork {
     /// <param name="compressionLevel">Level of compresison that will be applied</param>
     public static void SendNetworkPacket(Player player, PacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
-        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON, compressionType, compressionLevel, player.netId);
+        PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), PacketType.JSON, compressionType, compressionLevel, player.netId);
         SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
     }
 
@@ -262,7 +262,7 @@ public static class CodeTalkerNetwork {
     /// <param name="compressionLevel">Level of compresison that will be applied</param>
     public static void SendNetworkPacket(ulong steamID, BinaryPacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         byte[] serializedPacket = packet.Serialize();
-        P2PPacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, P2PPacketType.Binary, compressionType, compressionLevel);
+        PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary, compressionType, compressionLevel);
         SendSteamNetworkingMessage(new CSteamID(steamID), wrapper);
     }
 
@@ -275,7 +275,7 @@ public static class CodeTalkerNetwork {
     /// <param name="compressionLevel">Level of compresison that will be applied</param>
     public static void SendNetworkPacket(ulong steamID, PacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
         string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
-        P2PPacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), P2PPacketType.JSON, compressionType, compressionLevel);
+        PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), PacketType.JSON, compressionType, compressionLevel);
         SendSteamNetworkingMessage(new CSteamID(steamID), wrapper);
     }
 
@@ -284,7 +284,7 @@ public static class CodeTalkerNetwork {
     /// </summary>
     /// <param name="id"></param>
     /// <param name="wrappedPacket"></param>
-    internal static void SendSteamNetworkingMessage(CSteamID id, P2PPacketWrapper wrappedPacket) {
+    internal static void SendSteamNetworkingMessage(CSteamID id, PacketWrapper wrappedPacket) {
         SteamNetworkingIdentity target = new();
         target.SetSteamID(id);
         GCHandle packetBytesHandle = GCHandle.Alloc(wrappedPacket.PacketBytes, GCHandleType.Pinned);
@@ -356,10 +356,10 @@ StackTrace:
 
     static object? packet;
     static Type? type;
-    static P2PPacketWrapper? p2pWrapper;
+    static PacketWrapper? p2pWrapper;
     internal static void HandleP2PMessage(CSteamID senderID, Span<byte> rawData) {
         try {
-            p2pWrapper = new P2PPacketWrapper(rawData);
+            p2pWrapper = new PacketWrapper(rawData);
         } catch (Exception ex) {
             CodeTalkerPlugin.Log.LogError($"Failed to create P2P packet wrapper for valid packet!\nStackTrace: {ex}");
             return;
@@ -368,7 +368,7 @@ StackTrace:
         if (dbg)
             CodeTalkerPlugin.Log.LogDebug($"Got P2P packet! {p2pWrapper}");
 
-        void printWrapperInfo(Span<byte> rawData, P2PPacketWrapper wrapper, LogLevel level = LogLevel.Debug) {
+        void printWrapperInfo(Span<byte> rawData, PacketWrapper wrapper, LogLevel level = LogLevel.Debug) {
             CodeTalkerPlugin.Log.Log(level, $"Heard {rawData.Length} from steam network. Sender: {senderID} Wrapper: {wrapper}");
             CodeTalkerPlugin.Log.Log(level, $"Message hex: {BinaryToHexString(rawData)}");
             if(wrapper.compression != CompressionType.None)
@@ -384,7 +384,7 @@ StackTrace:
             }
         }
 
-        if (p2pWrapper.PacketType == P2PPacketType.JSON) {
+        if (p2pWrapper.PacketType == PacketType.JSON) {
             // JSON P2P packet
             if (dbg) {
                 CodeTalkerPlugin.Log.LogDebug($"Recieved P2P JSON packet!");
@@ -421,7 +421,7 @@ Expected Type: {p2pWrapper.PacketSignature}
             ExecuteHandler(listener, senderID, packet);
         }
 
-        if (p2pWrapper.PacketType == P2PPacketType.Binary) {
+        if (p2pWrapper.PacketType == PacketType.Binary) {
 
             if (!binaryListeners.TryGetValue(p2pWrapper.PacketSignature, out var listenerEntry)) {
                 if (dbg && (p2pWrapper.PacketSignature != lastSkippedPacketSig)) {

@@ -8,27 +8,27 @@ using static CodeTalker.Compressors;
 using System.Buffers.Binary;
 using System.Linq;
 
-internal enum P2PPacketType : Byte {
+internal enum PacketType : Byte {
     JSON,
     Binary
 }
 
 // This could replace both of the other wrappers as well at some point, but I havent done that
 // becuase I dont wanna make breaking changes rn
-internal class P2PPacketWrapper {
+internal class PacketWrapper {
     internal readonly byte[] PacketBytes;
 
     internal readonly UInt64 PacketSignature;
 
     // This should allow both JSON and binary without having a different wrapper for each
-    internal readonly P2PPacketType PacketType;
+    internal readonly PacketType PacketType;
 
     internal readonly CompressionType compression = CompressionType.None;
 
     internal readonly uint TargetNetId; // Will be used to route packets to specific clients in future updates
 
     // For sending packets
-    internal P2PPacketWrapper(string sig, Span<byte> rawData, P2PPacketType packetType, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest, uint targetNetId = 0) {
+    internal PacketWrapper(string sig, Span<byte> rawData, PacketType packetType, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest, uint targetNetId = 0) {
         Span<byte> ctSig = CODE_TALKER_P2P_SIGNATURE;
         Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
         PacketSignature = signatureHash(signatureBytes);
@@ -57,10 +57,10 @@ internal class P2PPacketWrapper {
     }
 
     // Reading packet in
-    internal P2PPacketWrapper(Span<byte> rawPacketData) {
+    internal PacketWrapper(Span<byte> rawPacketData) {
         //CodeTalkerPlugin.Log.LogDebug($"raw packet data hex: {BitConverter.ToString(rawPacketData).Replace("-", "")}");
         PacketSignature = BinaryPrimitives.ReadUInt64LittleEndian(rawPacketData);
-        PacketType = (P2PPacketType)(rawPacketData[8] & 0x0f);
+        PacketType = (PacketType)(rawPacketData[8] & 0x0f);
         compression = (CompressionType)((rawPacketData[8] >> 4) & 0x0f);
 
         TargetNetId = BinaryPrimitives.ReadUInt32LittleEndian(rawPacketData.Slice(9, 4));
