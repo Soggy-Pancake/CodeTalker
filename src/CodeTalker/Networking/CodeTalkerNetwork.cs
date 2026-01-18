@@ -303,7 +303,7 @@ public static class CodeTalkerNetwork {
 
 
     internal static void OnNetworkMessage(LobbyChatMsg_t message) {
-        if (dbg)
+        if (dev)
             CodeTalkerPlugin.Log.LogDebug("Called back!");
 
         const int bufferSize = 4096; //4kb buffer
@@ -311,8 +311,6 @@ public static class CodeTalkerNetwork {
 
         var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
         Span<byte> b = new Span<byte>(rawData);
-
-        var test = Encoding.UTF8.GetString(b.Slice(0, ret));
 
         if (signatureCheck(rawData, CODE_TALKER_P2P_SIGNATURE))
             HandleNetworkMessage(senderID, b.Slice(CODE_TALKER_P2P_SIGNATURE.Length, ret - CODE_TALKER_P2P_SIGNATURE.Length));
