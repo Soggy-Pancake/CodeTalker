@@ -304,7 +304,10 @@ public static class CodeTalkerNetwork {
 
     internal static void ExecuteHandler(Delegate listener, CSteamID senderID, object packetObj) {
         try {
-            listener.DynamicInvoke(new PacketHeader(senderID.m_SteamID), packetObj);
+            if(packetObj is PacketBase pkt)
+                ((PacketListener)listener).Invoke(new PacketHeader(senderID.m_SteamID), pkt);
+            else if (packetObj is BinaryPacketBase bPkt)
+                ((BinaryPacketListener)listener).Invoke(new PacketHeader(senderID.m_SteamID), bPkt);
         } catch (Exception ex) {
             var plugins = Chainloader.PluginInfos;
             var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == type.Assembly).FirstOrDefault();
