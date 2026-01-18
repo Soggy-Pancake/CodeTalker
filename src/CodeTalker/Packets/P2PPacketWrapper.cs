@@ -28,7 +28,7 @@ internal class P2PPacketWrapper {
     internal readonly uint TargetNetId; // Will be used to route packets to specific clients in future updates
 
     // For sending packets
-    internal P2PPacketWrapper(string sig, Span<byte> rawData, P2PPacketType packetType, CompressionType compressionType, CompressionLevel compressionLevel, uint targetNetId = 0) {
+    internal P2PPacketWrapper(string sig, Span<byte> rawData, P2PPacketType packetType, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest, uint targetNetId = 0) {
         Span<byte> ctSig = CODE_TALKER_P2P_SIGNATURE;
         Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
         PacketSignature = signatureHash(signatureBytes);
