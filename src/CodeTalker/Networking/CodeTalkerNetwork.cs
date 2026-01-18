@@ -13,7 +13,7 @@ using Newtonsoft.Json;
 using Steamworks;
 using ZstdSharp.Unsafe;
 using static CodeTalker.Compressors;
-using u64 = System.UInt64;
+using u64 = ulong;
 
 namespace CodeTalker.Networking;
 
