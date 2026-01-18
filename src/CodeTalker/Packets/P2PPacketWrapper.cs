@@ -37,8 +37,8 @@ internal class P2PPacketWrapper {
             rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
 
         int headerSize = ctSig.Length + sizeof(UInt64) + 5;
-        byte[] packetOut = new byte[headerSize + rawData.Length];
-        Span<byte> pkt = new Span<byte>(packetOut);
+        PacketBytes = new byte[headerSize + rawData.Length];
+        Span<byte> pkt = new Span<byte>(PacketBytes);
 
         // Make header
         // Header format: CODE_TALKER_P2P_SIGNATURE PacketSignatureHash(u64)
