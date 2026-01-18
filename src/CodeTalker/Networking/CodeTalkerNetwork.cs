@@ -59,6 +59,7 @@ public static class CodeTalkerNetwork {
       $"{type.Assembly.GetName().Name},{type.DeclaringType?.Name ?? "NONE"}:{type.Namespace ?? "NONE"}.{type.Name}";
 
     internal static bool dbg = false;
+    internal static bool dev = false;
 
     internal static bool signatureCheck(Span<byte> data, Span<byte> sig) {
         if (data.Length < sig.Length)
@@ -314,7 +315,7 @@ public static class CodeTalkerNetwork {
     }
 
     internal static void OnSteamSessionRequest(SteamNetworkingMessagesSessionRequest_t request) {
-        if (dbg)
+        if (dev)
             CodeTalkerPlugin.Log.LogDebug($"Accepting messages session request from {request.m_identityRemote.GetSteamID()}");
         SteamNetworkingMessages.AcceptSessionWithUser(ref request.m_identityRemote);
     }
