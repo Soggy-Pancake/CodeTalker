@@ -464,6 +464,10 @@ Expected Type: {wrapper.PacketSignature}
 
                 ExecuteHandler(listenerEntry.Listener, senderID, packet);
                 break;
+
+            default:
+                CodeTalkerPlugin.Log.LogError($"UNKNOWN PACKET TYPE RECIEVED! THERE IS LIKELY A BUG IN CODEYAPPER. REPORT THIS TO @Soggy_Pancake! {wrapper}\nRecieved data: {BinaryToHexString(rawData)}");
+                break;
         }
     }
 #endregion Message Handling
