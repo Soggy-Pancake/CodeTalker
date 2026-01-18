@@ -97,6 +97,7 @@ public static class CodeTalkerNetwork {
         u64 typeHash = signatureHash(Encoding.UTF8.GetBytes(typeName));
 
         if (packetListeners.ContainsKey(typeHash)) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register listener for type {inType.FullName}! A listener for this type is already registered or a hash collision has occurred!");
             return false;
         }
 
@@ -128,8 +129,10 @@ public static class CodeTalkerNetwork {
         }
 
         u64 sigHash = signatureHash(Encoding.UTF8.GetBytes(instance.PacketSignature));
-        if (binaryListeners.ContainsKey(sigHash))
+        if (binaryListeners.ContainsKey(sigHash)){
+            CodeTalkerPlugin.Log.LogError($"Failed to register listener for type {instance.PacketSignature}! A listener for this type is already registered or a hash collision has occurred!");
             return false;
+        }
 
         binaryListeners.Add(sigHash, new BinaryListenerEntry { Listener = listener, PacketType = type });
         return true;
