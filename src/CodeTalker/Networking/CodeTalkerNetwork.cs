@@ -147,15 +147,12 @@ public static class CodeTalkerNetwork {
         string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
         PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), PacketType.JSON);
 
-        var rawWrapper = $"{CODE_TALKER_SIGNATURE}{JsonConvert.SerializeObject(wrapper, PacketSerializer.JSONOptions)}";
-        var bytes = Encoding.UTF8.GetBytes(rawWrapper);
-
-        if (bytes.Length > 4096) {
-            CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {bytes.Length}");
+        if (wrapper.PacketBytes.Length > 4096) {
+            CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
             return;
         }
 
-        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), bytes, bytes.Length);
+        SteamMatchmaking.SendLobbyChatMsg(new(SteamLobby._current._currentLobbyID), wrapper.PacketBytes, wrapper.PacketBytes.Length);
     }
 
     /// <summary>
