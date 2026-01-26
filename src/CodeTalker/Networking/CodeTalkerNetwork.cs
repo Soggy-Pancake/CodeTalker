@@ -428,8 +428,8 @@ Expected Type: {wrapper.PacketSignature}
                     if (dev && (wrapper.PacketSignature != lastSkippedPacketSig)) {
                         CodeTalkerPlugin.Log.LogDebug($"Skipping binary packet of unknown signature hash: 0x{wrapper.PacketSignature.ToString("x2")} because this client does not have it installed, this is safe!");
                         lastSkippedPacketSig = wrapper.PacketSignature;
-                        return;
                     }
+                    return;
                 }
 
                 try {
