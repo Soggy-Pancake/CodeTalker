@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Sockets;
@@ -345,6 +346,7 @@ public static class CodeTalkerNetwork {
         CodeTalkerPlugin.Log.Log(level, $"Message hex: {BinaryToHexString(wrapper.PacketBytes)}");
     }
 
+    [DebuggerNonUserCode]
     internal static void ExecuteHandler(Delegate listener, CSteamID senderID, object packetObj) {
         try {
             if (packetObj is PacketBase pkt) {
