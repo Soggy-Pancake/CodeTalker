@@ -1,5 +1,20 @@
 # Changelog
 
+## Version 2.2.0
+
+- Removed specific json and binary packet wrappers for newer 'P2P' wrapper
+	- **THIS UPDATE IS NOT BACKWARDS COMPATIBLE WITH OTHER VERSIONS OF CODEYAPPER**
+	- P2P Wrapper is now just `PacketWrapper`
+		- **All packets now support auto compression!** You no longer have to use p2p to be able to compress your packets automatically!
+		- The old methods with no optionals have not been removed for ABI compatibility as some unmaintained but functional mods would still break!
+		- Codeyapper now only uses 1 signature again.
+			- Network version has also been increased
+- Packet signatures are sent as a hash instead of the whole string! Usable packet size for broadcast packets is now fixed.
+- Internal code has been refactored to use `Span` instead of arrays. *There is no visible change to mods.*
+	- Significantly less code duplication and simplified control flow now too.
+- Added `EnableDevMode` config option to log network traffic. `EnablePacketDebugging` now only logs packets that trigger their handler.
+	- No more "recieved SNM" and such logs unless you enable dev mode
+
 ## Version 2.1.0
 
 - Added support for P2P connections using SteamNetworkingMessages.
