@@ -8,11 +8,16 @@ The current built in compression algorithms are:
 - ZStd
 - GZip
 
+All packets can have compression handled by CodeYapper as of `2.2.0`. In `2.1.0` only p2p packets could have compression automatically applied.
+To tell codeyapper to automatically apply compression add the `CompressionType` to the arguments when you send a packet!
+```C#
+CodeTalkerNetwork.SendNetworkPacket(packet, CompressionType, CompressionLevel);
+```
+> Note: Both `CompressionType` and `CompressionLevel` are still optional! **Only specifying `CompressionLevel` will not result in compression!**
 
-Compression can be applied yourself by using (binary packets only, unless you have a byte array in a json packet for some reason):
+Compression can be applied yourself by using `Compressors.Compress` and `Compressors.Decompress` (binary only):
 ```C#
 using CodeTalker.Compressors;
-
 
 Compresssors.Compress(byte[] data, CompressionType type = CompressionType.Brotli, CompressionLevel = CompressionLevel.Fastest)
 Compressors.Decompress(byte[] data, CompressionType type = CompressionType.Brotli);
