@@ -234,9 +234,14 @@ public static class CodeTalkerNetwork {
     /// <param name="compressionType">Automatically apply compression</param>
     /// <param name="compressionLevel">Level of compresison that will be applied</param>
     public static void SendNetworkPacket(Player player, BinaryPacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
+        if (player.Network_steamID == string.Empty || ulong.TryParse(player.Network_steamID, out ulong steamId)) {
+            CodeTalkerPlugin.Log.LogError($"Unable to send a packet of type '{packet.PacketSignature}' to \"{player.Network_nickname}\" which has an empty or invalid steam id!");
+            return;
+        }
+
         byte[] serializedPacket = packet.Serialize();
         PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary, compressionType, compressionLevel, player.netId);
-        SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
+        SendSteamNetworkingMessage(new CSteamID(steamId), wrapper);
     }
 
     /// <summary>
@@ -247,9 +252,14 @@ public static class CodeTalkerNetwork {
     /// <param name="compressionType">Automatically apply compression</param>
     /// <param name="compressionLevel">Level of compresison that will be applied</param>
     public static void SendNetworkPacket(Player player, PacketBase packet, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest) {
+        if (player.Network_steamID == string.Empty || ulong.TryParse(player.Network_steamID, out ulong steamId)) {
+            CodeTalkerPlugin.Log.LogError($"Unable to send a packet of type '{packet.PacketSourceGUID}' to \"{player.Network_nickname}\" which has an empty or invalid steam id!");
+            return;
+        }
+
         string serializedPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
         PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(serializedPacket), PacketType.JSON, compressionType, compressionLevel, player.netId);
-        SendSteamNetworkingMessage(new CSteamID(ulong.Parse(player.Network_steamID)), wrapper);
+        SendSteamNetworkingMessage(new CSteamID(steamId), wrapper);
     }
 
     /// <summary>
