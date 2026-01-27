@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.2.2
+
+- Forgot to not the ulong.tryparse >~<
+
 ## Version 2.2.1
 
 > Hotfix for 2.2.0
