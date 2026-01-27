@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 2.2.1
+
+> Hotfix for 2.2.0
+- Fixed bug where binary packets that didnt have a registered listener could still attempt to be processed, resulting in a null reference.
+- Check if player steam id is null or invalid before sending (mario's observe was sending too early)
+
 ## Version 2.2.0
 
 - Removed specific json and binary packet wrappers for newer 'P2P' wrapper
