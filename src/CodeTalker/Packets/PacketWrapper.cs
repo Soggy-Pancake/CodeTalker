@@ -31,6 +31,7 @@ internal class PacketWrapper {
     internal PacketWrapper(string sig, Span<byte> rawData, PacketType packetType, CompressionType compressionType = CompressionType.None, CompressionLevel compressionLevel = CompressionLevel.Fastest, uint targetNetId = 0) {
         Span<byte> ctSig = CODE_TALKER_SIGNATURE;
         Span<byte> signatureBytes = Encoding.UTF8.GetBytes(sig);
+        this.PacketType = packetType; // just for debugging
         PacketSignature = signatureHash(signatureBytes);
 
         if (compressionType != CompressionType.None)
