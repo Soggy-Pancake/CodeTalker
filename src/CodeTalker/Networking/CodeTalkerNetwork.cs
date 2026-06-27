@@ -102,7 +102,35 @@ public static class CodeTalkerNetwork {
 
         packetListeners.Add(typeHash, listener);
         packetDeserializers.Add(typeHash, (payload) => JsonConvert.DeserializeObject<T>(payload, PacketSerializer.JSONOptions)!);
+        return true;
+    }
 
+    /// <summary>
+    /// Registers a listenerEntry by packet type. Code Talker will call
+    /// your listenerEntry when the specific System.Type is created from
+    /// a serial network message and pass it to your listenerEntry
+    /// </summary>
+    /// <typeparam name="T">The exact runtime type of your packet</typeparam>
+    /// <param name="listener">A PacketListener delegate to notify</param>
+    /// <returns>
+    /// Will return <em>TRUE</em> if the listenerEntry is added to the list and
+    /// <em>FALSE</em> is a listenerEntry already exists for this type
+    /// </returns>
+    public static bool RegisterListener<T>(BinaryPacketListener listener) where T : BinaryPacketBase, new() {
+        Type type = typeof(T);
+        BinaryPacketBase instance = new T();
+        if (instance.PacketSignature == string.Empty) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register binary Listener for type {type.FullName}, PacketSignature can't be empty!");
+            return false;
+        }
+
+        u64 sigHash = signatureHash(Encoding.UTF8.GetBytes(instance.PacketSignature));
+        if (binaryListeners.ContainsKey(sigHash)) {
+            CodeTalkerPlugin.Log.LogError($"Failed to register listener for type {instance.PacketSignature}! A listener for this type is already registered or a hash collision has occurred!");
+            return false;
+        }
+
+        binaryListeners.Add(sigHash, new BinaryListenerEntry { Listener = listener, PacketType = type });
         return true;
     }
 
@@ -118,6 +146,7 @@ public static class CodeTalkerNetwork {
     /// Will return <em>TRUE</em> if the listenerEntry is added to the list and
     /// <em>FALSE</em> is a listenerEntry already exists for this type
     /// </returns>
+    [Obsolete("Use RegisterListener instead")]
     public static bool RegisterBinaryListener<T>(BinaryPacketListener listener) where T : BinaryPacketBase, new() {
 
         var type = typeof(T);
