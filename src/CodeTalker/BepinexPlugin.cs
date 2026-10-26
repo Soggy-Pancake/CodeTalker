@@ -45,8 +45,10 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
                 if (algo == CompressionType.None)
                     continue;
 
-                var compressed = Compress(data, algo, CompressionLevel.Fastest);
-                _ = Decompress(compressed, algo, CompressionLevel.Fastest);
+                try {
+                    var compressed = Compress(data, algo, CompressionLevel.Fastest);
+                    _ = Decompress(compressed, algo, CompressionLevel.Fastest);
+                } catch {}
             }
         }
     }

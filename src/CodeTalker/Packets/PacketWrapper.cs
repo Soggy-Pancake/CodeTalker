@@ -7,6 +7,7 @@ using static CodeTalker.Networking.CodeTalkerNetwork;
 using static CodeTalker.Compressors;
 using System.Buffers.Binary;
 using System.Linq;
+using Newtonsoft.Json;
 
 internal enum PacketType : Byte {
     JSON,
@@ -66,6 +67,18 @@ internal class PacketWrapper {
 
         TargetNetId = BinaryPrimitives.ReadUInt32LittleEndian(rawPacketData.Slice(9, 4));
         PacketBytes = rawPacketData.Slice(13).ToArray();
+
+        if (compression == CompressionType.Brotli) {
+            Type? type = null;
+            if (PacketType == PacketType.JSON && packetDeserializers.TryGetValue(PacketSignature, out var a))
+                type = a.Method.ReturnType;
+
+            if (PacketType == PacketType.Binary && binaryListeners.TryGetValue(PacketSignature, out var b))
+                type = b.PacketType;
+
+            CodeTalkerPlugin.Log.LogError($"[Affected packet: {(type != null ? GetTypeNameString(type) : "Unknown Type")}] Brotli compression is currently DISABLED due to .NET brotli decoder CVE! (CVE-2026-111497)");
+            return;
+        }
 
         if (compression != CompressionType.None)
             PacketBytes = Decompress(PacketBytes, compression);

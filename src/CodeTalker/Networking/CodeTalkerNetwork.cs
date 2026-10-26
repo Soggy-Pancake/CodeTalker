@@ -42,16 +42,16 @@ public static class CodeTalkerNetwork {
     private const ushort NETWORK_PACKET_VERSION = 4;
     internal static byte[] CODE_TALKER_SIGNATURE = Encoding.UTF8.GetBytes($"!CTN:PV{NETWORK_PACKET_VERSION}!");
 
-    private static readonly Dictionary<UInt64, PacketListener> packetListeners = [];
-    private static readonly Dictionary<UInt64, Func<string, PacketBase>> packetDeserializers = [];
+    internal static readonly Dictionary<u64, PacketListener>           packetListeners     = [];
+    internal static readonly Dictionary<u64, Func<string, PacketBase>> packetDeserializers = [];
 
     static u64 lastSkippedPacketSig = 0;
 
-    struct BinaryListenerEntry {
+    internal struct BinaryListenerEntry {
         public BinaryPacketListener Listener;
         public Type PacketType;
     }
-    private static readonly Dictionary<UInt64, BinaryListenerEntry> binaryListeners = [];
+    internal static readonly Dictionary<u64, BinaryListenerEntry> binaryListeners = [];
 
     internal static string GetTypeNameString(Type type) =>
       $"{type.Assembly.GetName().Name},{type.DeclaringType?.Name ?? "NONE"}:{type.Namespace ?? "NONE"}.{type.Name}";

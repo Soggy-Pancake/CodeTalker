@@ -24,7 +24,7 @@ public static class Compressors {
         /// </summary>
         None,
         /// <summary>
-        /// Brotli compression (default)
+        /// Brotli compression (DISABLED CVE-2026-111497) 
         /// </summary>
         Brotli,
         /// <summary>
@@ -48,16 +48,20 @@ public static class Compressors {
     /// <param name="type"></param>
     /// <param name="level"></param>
     /// <returns></returns>
-    public static byte[] Compress(byte[] data, CompressionType type = CompressionType.Brotli, CompressionLevel level = CompressionLevel.Fastest) {
+    public static byte[] Compress(byte[] data, CompressionType type = CompressionType.ZStd, CompressionLevel level = CompressionLevel.Fastest) {
+        MemoryStream input, outStream;
         switch (type) {
             case CompressionType.Brotli:
-                MemoryStream input = new MemoryStream(data);
-                MemoryStream outStream = new MemoryStream();
+                /*
+                input = new MemoryStream(data);
+                outStream = new MemoryStream();
                 var brotliCompressor = new BrotliStream(outStream, level);
                 input.CopyTo(brotliCompressor);
                 brotliCompressor.Close();
                 brotliCompressor.DisposeAsync();
                 return outStream.ToArray();
+                */
+                throw new InvalidDataException("Brotli compression is currently DISABLED due to .NET brotli decoder CVE! (CVE-2026-111497)");
             case CompressionType.ZStd:
                 var compressor = new Compressor(level == CompressionLevel.Fastest ? 3 : 10); // 3 is default, 10 is a number I randomly picked
                 return compressor.Wrap(data).ToArray();
@@ -83,13 +87,17 @@ public static class Compressors {
     /// <param name="type"></param>
     /// <param name="level"></param>
     /// <returns></returns>
-    public static byte[] Decompress(byte[] data, CompressionType type = CompressionType.Brotli, CompressionLevel level = CompressionLevel.Fastest) {
+    public static byte[] Decompress(byte[] data, CompressionType type = CompressionType.ZStd, CompressionLevel level = CompressionLevel.Fastest) {
+        MemoryStream outStream;
         switch (type) {
             case CompressionType.Brotli:
+                /*
                 var brotliDecompressor = new BrotliStream(new MemoryStream(data), CompressionMode.Decompress);
-                MemoryStream outStream = new MemoryStream();
+                outStream = new MemoryStream();
                 brotliDecompressor.CopyTo(outStream);
                 return outStream.ToArray();
+                */
+                throw new InvalidDataException("Brotli compression is currently DISABLED due to .NET brotli decoder CVE! (CVE-2026-111497)");
             case CompressionType.ZStd:
                 var decompressor = new Decompressor();
                 return decompressor.Unwrap(data).ToArray();
