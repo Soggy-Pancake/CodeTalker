@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 2.2.3
+
+- **Disabled brotli compression due to an out of bounds write vulnerability in .NET (CVE-2026-111497)**
+	- Attempting to send or receive a message with brotli compression will raise an exception.
+	- The default compression method has been changed to ZStandard
+
 ## Version 2.2.2
 
 - Forgot to not the ulong.tryparse >~<
