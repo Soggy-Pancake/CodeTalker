@@ -171,6 +171,7 @@ public static class CodeTalkerNetwork {
     /// Wraps and sends a message to all clients on the Code Talker network
     /// </summary>
     /// <param name="packet">The packet to send, must be derived from PacketBase</param>
+    [Obsolete("This method will be removed soon due to not supporting compression types. To use the new method overload append `default` to your arguments. (ie `Send...(new Packet(), default);`)")]
     public static void SendNetworkPacket(PacketBase packet) {
         string rawPacket = JsonConvert.SerializeObject(packet, PacketSerializer.JSONOptions);
         PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), PacketType.JSON);
@@ -187,6 +188,7 @@ public static class CodeTalkerNetwork {
     /// Wraps and sends a binary packet to all clients on the Code Talker network
     /// </summary>
     /// <param name="packet"></param>
+    [Obsolete("This method will be removed soon due to not supporting compression types. To use the new method overload append `default` to your arguments. (ie `Send...(new Packet(), default);`)")]
     public static void SendNetworkPacket(BinaryPacketBase packet) {
         byte[] serializedPacket = packet.Serialize();
         PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary);
