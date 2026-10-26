@@ -95,12 +95,11 @@ public static class CodeTalkerNetwork {
         string typeName = GetTypeNameString(inType);
         u64 typeHash = signatureHash(Encoding.UTF8.GetBytes(typeName));
 
-        if (packetListeners.ContainsKey(typeHash)) {
+        if (!packetListeners.TryAdd(typeHash, listener)) {
             CodeTalkerPlugin.Log.LogError($"Failed to register listener for type {inType.FullName}! A listener for this type is already registered or a hash collision has occurred!");
             return false;
         }
 
-        packetListeners.Add(typeHash, listener);
         packetDeserializers.Add(typeHash, (payload) => JsonConvert.DeserializeObject<T>(payload, PacketSerializer.JSONOptions)!);
         return true;
     }
@@ -134,11 +133,10 @@ public static class CodeTalkerNetwork {
         return true;
     }
 
-
     /// <summary>
     /// Registers a listenerEntry by binary packet signature. Code Talker will call
     /// your listenerEntry when a binary packet with the matching signature
-    /// is recieved and will pass the raw byte array to your listenerEntry
+    /// is received and will pass the raw byte array to your listenerEntry
     /// </summary>
     /// <typeparam name="T">The exact runtime type of your packet</typeparam>
     /// <param name="listener"></param>
@@ -344,7 +342,10 @@ public static class CodeTalkerNetwork {
         byte[] rawData = new byte[bufferSize];
 
         var ret = SteamMatchmaking.GetLobbyChatEntry(new(message.m_ulSteamIDLobby), (int)message.m_iChatID, out var senderID, rawData, bufferSize, out var messageType);
-        Span<byte> b = new Span<byte>(rawData);
+        Span<byte> b = new Span<byte>(rawData).Slice(0, ret);
+        
+        if (dev)
+            CodeTalkerPlugin.Log.LogDebug($"Recieved {b.Length} bytes! Raw input: {BinaryToUtf8String(b)}");
 
         if (signatureCheck(rawData, CODE_TALKER_SIGNATURE))
             HandleNetworkMessage(senderID, b.Slice(CODE_TALKER_SIGNATURE.Length, ret - CODE_TALKER_SIGNATURE.Length));
@@ -393,7 +394,7 @@ public static class CodeTalkerNetwork {
             }
         } catch (Exception ex) {
             var plugins = Chainloader.PluginInfos;
-            var mod = plugins.Values.Where(mod => mod.Instance?.GetType().Assembly == type?.Assembly).FirstOrDefault();
+            var mod     = plugins.Values.FirstOrDefault(mod => mod.Instance?.GetType().Assembly == type?.Assembly);
 
             //Happy lil ternary
             string modName = mod != null
