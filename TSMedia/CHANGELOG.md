@@ -1,5 +1,18 @@
 # Changelog
 
+## Version 2.2.4
+
+Fixes easy DOS attack.
+
+- Decompression now only happens when packet data is used.
+	- It used to attempt to decompress the packet as soon as it was parsed. This is extremely wasteful when the packet 
+      doesn't have a listener and is discarded.
+    - The load isn't *zero* load parsing these bad packets but it is now not as noticeable. I maybe dropped from 180 to 160 fps when testing.
+- P2P packets were used to send out the malformed packets that were lagging servers. While I could default Codeyapper to
+  filter out all players not in the lobby this could also be a neat feature mods could use. If this becomes a large problem
+  I will probably deny requests from players not in the same lobby as well as add a way to ban/ignore all P2P requests from
+  specific accounts.
+
 ## Version 2.2.3
 
 - **Disabled brotli compression due to an out of bounds write vulnerability in .NET (CVE-2026-111497)**
