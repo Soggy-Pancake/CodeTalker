@@ -421,9 +421,9 @@ StackTrace:
             return;
         }
 
-        if (wrapper.TargetNetId > 0) {
+        if (wrapper.TargetNetId != 0) {
             // Targeted packet
-            if (Player._mainPlayer == null || Player._mainPlayer.netId != wrapper.TargetNetId) {
+            if (Player._mainPlayer?.netId != wrapper.TargetNetId) {
                 if (dev)
                     CodeTalkerPlugin.Log.LogDebug($"Target netId doesn't match this client! Targeted netId: {wrapper.TargetNetId}");
                 return;
@@ -504,7 +504,7 @@ Expected Type: {wrapper.PacketSignature}
                 break;
 
             default:
-                CodeTalkerPlugin.Log.LogError($"UNKNOWN PACKET TYPE RECIEVED! THERE IS LIKELY A BUG IN CODEYAPPER. REPORT THIS TO @Soggy_Pancake! {wrapper}\nRecieved data: {BinaryToHexString(rawData)}");
+                CodeTalkerPlugin.Log.LogError($"UNKNOWN PACKET TYPE RECIEVED! THERE IS LIKELY A BUG IN CODEYAPPER. REPORT THIS TO @Soggy_Pancake! {wrapper}\nRecieved data (max 1024 bytes): {BinaryToHexString(rawData.Slice(0, Math.Min(rawData.Length, 1024)))}");
                 break;
         }
     }
