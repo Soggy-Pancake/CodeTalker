@@ -347,9 +347,9 @@ public static class CodeTalkerNetwork {
         Span<byte> b = new Span<byte>(rawData).Slice(0, ret);
         
         if (dev)
-            CodeTalkerPlugin.Log.LogDebug($"Recieved {b.Length} bytes! Raw input: {BinaryToUtf8String(b)}");
+            CodeTalkerPlugin.Log.LogDebug($"Received {b.Length} bytes! Raw input: {BinaryToString(b)}");
 
-        if (signatureCheck(rawData, CODE_TALKER_SIGNATURE))
+        if (signatureCheck(b, CODE_TALKER_SIGNATURE))
             HandleNetworkMessage(senderID, b.Slice(CODE_TALKER_SIGNATURE.Length, ret - CODE_TALKER_SIGNATURE.Length));
     }
 
@@ -360,8 +360,8 @@ public static class CodeTalkerNetwork {
     }
 
     // Quick function to sanitize control characters from binary strings for logging
-    internal static string BinaryToUtf8String(Span<byte> data) {
-        return new string(Encoding.UTF8.GetString(data).Select(c => char.IsControl(c) && c != '\r' && c != '\n' ? '�' : c).ToArray());
+    internal static string BinaryToString(Span<byte> data) {
+        return Encoding.ASCII.GetString(data);
     }
 
     internal static string BinaryToHexString(Span<byte> data) {
