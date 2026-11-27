@@ -33,7 +33,7 @@ internal class PacketWrapper {
                 return [];
             }
             
-            _PacketBytes = Decompress(PacketBytes, compression);
+            _PacketBytes = Decompress(_PacketBytes, compression);
             isCompressed = false;
             return _PacketBytes;
         }
