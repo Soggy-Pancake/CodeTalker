@@ -1,5 +1,18 @@
 # Changelog
 
+## Version 2.2.5
+
+Fix the fix. Also happy Thanksgiving c: (it still is for me on upload)
+
+- Fixed the accidental infinite recursion caused during packet decompression.
+	- No more hard crashes with nothing in the logs
+- Prints sender of the packet more often along with more packet data.
+- Checks for any listener for the signature before trying to handle it.
+	- Removes error log spam when receiving garbage packets.
+- Packet debug is enabled when dev mode is enabled.
+- Packet text dumps are now only in ASCII as I kept breaking my console testing with fully random packets.
+	- Basic testing plugin was used but it's not available yet in the repo.
+
 ## Version 2.2.4
 
 Fixes easy DOS attack.
