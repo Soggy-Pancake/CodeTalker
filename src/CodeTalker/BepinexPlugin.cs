@@ -78,12 +78,12 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
                         if (devMode.Value)
                             Log.LogDebug($"Recieved SNM packet of size {msg.m_cbSize}");
                         try { // just to be safe and make absolutely sure it gets freed
-                            Marshal.Copy(msg.m_pData, buffer, 0, (int)msg.m_cbSize);
+                            Marshal.Copy(msg.m_pData, buffer, 0, msg.m_cbSize);
 
-                            Span<byte> b = new Span<byte>(buffer);
-                            if(signatureCheck(buffer, CODE_TALKER_SIGNATURE)){
+                            Span<byte> b = buffer;
+                            if(signatureCheck(b, CODE_TALKER_SIGNATURE)){
                                 if (devMode.Value)
-                                    Log.LogDebug($"Got P2P message! {BinaryToHexString(buffer)}");
+                                    Log.LogDebug($"Got P2P message! {BinaryToHexString(b)}");
                                 HandleNetworkMessage(msg.m_identityPeer.GetSteamID(), b.Slice(CODE_TALKER_SIGNATURE.Length));
                             }
                         } catch { }
