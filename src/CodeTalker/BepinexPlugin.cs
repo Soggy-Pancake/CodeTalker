@@ -26,7 +26,7 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
     private void Awake() {
         Log = Logger;
         EnablePacketDebugging = Config.Bind("Debugging", "EnablePacketDebugging", false, "If CodeTalker should dump packet information (this will be on the debug channel, make sure that is enabled in BepInEx.cfg)");
-        devMode = Config.Bind("General", "EnableDevMode", false, "If CodeTalker should log extremely verbosely. This should only be used when actively debugging codetalker!");
+        devMode = Config.Bind("General", "EnableDevMode", false, "If CodeTalker should log extremely verbosely. This should only be used when actively debugging codetalker! Enables packet debugging automatically.");
 
         Log.LogInfo($"Plugin {LCMPluginInfo.PLUGIN_NAME} version {LCMPluginInfo.PLUGIN_VERSION} is loaded!");
 
@@ -35,7 +35,7 @@ public class CodeTalkerPlugin : BaseUnityPlugin {
         Callback<SteamRelayNetworkStatus_t>.Create(OnSteamNetworkInitialized);
         Log.LogMessage("Created steam networking callbacks");
 
-        CodeTalkerNetwork.dbg = EnablePacketDebugging.Value;
+        CodeTalkerNetwork.dbg = EnablePacketDebugging.Value || devMode.Value;
         CodeTalkerNetwork.dev = devMode.Value;
 
         { // Preload compression libraries to prevent lag when joining servers
