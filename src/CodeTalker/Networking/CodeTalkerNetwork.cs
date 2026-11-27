@@ -177,7 +177,7 @@ public static class CodeTalkerNetwork {
         PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), PacketType.JSON);
 
         if (wrapper.PacketBytes.Length > 4096) {
-            CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
+            CodeTalkerPlugin.Log.LogError($"Failed to send Json packet, size exceeds maximum of 4kb! {GetTypeNameString(packet.GetType())} {wrapper}");
             return;
         }
 
@@ -194,7 +194,7 @@ public static class CodeTalkerNetwork {
         PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary);
 
         if (wrapper.PacketBytes.Length > 4096) {
-            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
+            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet, size exceeds maximum of 4kb! {packet.PacketSignature} {wrapper}");
             return;
         }
 
@@ -213,7 +213,7 @@ public static class CodeTalkerNetwork {
         PacketWrapper wrapper = new(GetTypeNameString(packet.GetType()), Encoding.UTF8.GetBytes(rawPacket), PacketType.JSON, compressionType, compressionLevel);
 
         if (wrapper.PacketBytes.Length > 4096) {
-            CodeTalkerPlugin.Log.LogError($"Failed to send packet of type {GetTypeNameString(packet.GetType())}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
+            CodeTalkerPlugin.Log.LogError($"Failed to send Json packet, size exceeds maximum of 4kb! {GetTypeNameString(packet.GetType())} {wrapper}");
             return;
         }
 
@@ -231,7 +231,7 @@ public static class CodeTalkerNetwork {
         PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary, compressionType, compressionLevel);
 
         if (wrapper.PacketBytes.Length > 4096) {
-            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
+            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet, size exceeds maximum of 4kb! {packet.PacketSignature} {wrapper}");
             return;
         }
 
@@ -248,7 +248,7 @@ public static class CodeTalkerNetwork {
         PacketWrapper wrapper = new(packet.PacketSignature, serializedPacket, PacketType.Binary);
 
         if (wrapper.PacketBytes.Length > 4096) {
-            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet of signature {packet.PacketSignature}, packet size exceeds maximum of 4kb! Size: {wrapper.PacketBytes.Length}");
+            CodeTalkerPlugin.Log.LogError($"Failed to send binary packet, size exceeds maximum of 4kb! {packet.PacketSignature} {wrapper}");
             return;
         }
 
@@ -424,8 +424,8 @@ StackTrace:
         if (wrapper.TargetNetId != 0) {
             // Targeted packet
             if (Player._mainPlayer?.netId != wrapper.TargetNetId) {
-                if (dev)
-                    CodeTalkerPlugin.Log.LogDebug($"Target netId doesn't match this client! Targeted netId: {wrapper.TargetNetId}");
+                if (dbg)
+                    CodeTalkerPlugin.Log.LogDebug($"Target netId doesn't match this client! {wrapper}");
                 return;
             }
         }
@@ -504,7 +504,7 @@ Expected Type: {wrapper.PacketSignature}
                 break;
 
             default:
-                CodeTalkerPlugin.Log.LogError($"UNKNOWN PACKET TYPE RECIEVED! THERE IS LIKELY A BUG IN CODEYAPPER. REPORT THIS TO @Soggy_Pancake! {wrapper}\nRecieved data (max 1024 bytes): {BinaryToHexString(rawData.Slice(0, Math.Min(rawData.Length, 1024)))}");
+                CodeTalkerPlugin.Log.LogError($"UNKNOWN PACKET TYPE RECIEVED! THERE IS LIKELY A BUG IN CODEYAPPER. REPORT THIS TO @Soggy_Pancake! Sender: {senderID.m_SteamID} {wrapper}\nRecieved data (max 1024 bytes): {BinaryToHexString(rawData.Slice(0, Math.Min(rawData.Length, 1024)))}");
                 break;
         }
     }
