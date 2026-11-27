@@ -430,6 +430,13 @@ StackTrace:
             }
         }
 
+        if (!(packetListeners.ContainsKey(wrapper.PacketSignature) ||
+              binaryListeners.ContainsKey(wrapper.PacketSignature))) {
+            if (dbg)
+                CodeTalkerPlugin.Log.LogDebug($"No listeners for signature! Sender: {senderID.m_SteamID} {wrapper}");
+            return;
+        }
+
         switch (wrapper.PacketType) {
             case PacketType.JSON:
                 if (dev)
