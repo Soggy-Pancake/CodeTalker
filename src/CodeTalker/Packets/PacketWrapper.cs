@@ -37,10 +37,9 @@ internal class PacketWrapper {
             isCompressed = false;
             return _PacketBytes;
         }
-        set => _PacketBytes = value;
     }
 
-    internal byte[] _PacketBytes;
+    byte[] _PacketBytes;
 
     internal readonly UInt64 PacketSignature;
 
@@ -63,8 +62,8 @@ internal class PacketWrapper {
             rawData = Compress(rawData.ToArray(), compressionType, compressionLevel);
 
         int headerSize = ctSig.Length + sizeof(UInt64) + 5;
-        PacketBytes = new byte[headerSize + rawData.Length];
-        Span<byte> pkt = new Span<byte>(PacketBytes);
+        _PacketBytes = new byte[headerSize + rawData.Length];
+        Span<byte> pkt = new Span<byte>(_PacketBytes);
 
         // Make header
         // Header format: CODE_TALKER_SIGNATURE PacketSignatureHash(u64)
@@ -95,6 +94,6 @@ internal class PacketWrapper {
     }
 
     public override string ToString() {
-        return $"[Type: {PacketType} Compression: {compression} Target: {TargetNetId}]";
+        return $"[PacketSig: {PacketSignature} Target: {TargetNetId} Type: {PacketType} Size: {_PacketBytes.Length} Compression: {compression}]";
     }
 }
